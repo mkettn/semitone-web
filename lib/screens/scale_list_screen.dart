@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/scale_presets.dart';
 import '../models/tuning_scale.dart';
 import '../services/settings_service.dart';
 import '../theme/semitone_theme.dart';
@@ -19,18 +20,55 @@ class ScaleListScreen extends StatefulWidget {
 
 class _ScaleListScreenState extends State<ScaleListScreen> {
   Future<void> _createScale() async {
+    final preset = await _promptForPreset(context);
+    if (preset == null) return;
+    if (!mounted) return;
+
     final name = await _promptForName(
       context,
       title: 'New scale',
-      initial: 'My scale ${widget.settings.customScales.length + 1}',
+      initial: preset.name == 'Chromatic'
+          ? 'My scale ${widget.settings.customScales.length + 1}'
+          : preset.name,
     );
     if (name == null || name.trim().isEmpty) return;
 
-    final scale = TuningScale.defaultChromatic().copyWith(name: name.trim());
+    final scale = preset.build().copyWith(name: name.trim());
     widget.settings.addScale(scale);
     setState(() {});
     if (!mounted) return;
     await _openEditor(scale.id);
+  }
+
+  Future<ScalePreset?> _promptForPreset(BuildContext context) {
+    return showDialog<ScalePreset>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Start from'),
+        children: [
+          for (final preset in scalePresets)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(preset),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(preset.name),
+                    Text(
+                      preset.description,
+                      style: const TextStyle(
+                        color: SemitoneColors.grey4,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Future<void> _duplicateScale(String id) async {
