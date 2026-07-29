@@ -8,11 +8,12 @@ import 'package:semitone_web/services/settings_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('seeds every preset on first run, active on the chromatic one', () async {
+  test('seeds every bundled preset on first run, active on the chromatic one', () async {
     SharedPreferences.setMockInitialValues({});
     final settings = await SettingsService.create();
+    final presets = await loadPresetScales();
 
-    expect(settings.scales.map((s) => s.name), scalePresets.map((p) => p.name));
+    expect(settings.scales.map((s) => s.name), presets.map((p) => p.name));
     expect(settings.activeScale?.name, 'Chromatic');
   });
 

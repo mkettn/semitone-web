@@ -1,0 +1,15 @@
+{
+  "name": "Byzantine — Enharmonic",
+  "rootIndex": 0,
+  "rootOctave": 4,
+  "baseFrequency": 440,
+  "degrees": [
+    {"name": "Νη", "cents": 0},
+    {"name": "Πα", "cents": 200},
+    {"name": "Βου", "cents": 400},
+    {"name": "Γα", "cents": 500},
+    {"name": "Δι", "cents": 700},
+    {"name": "Κε", "cents": 900},
+    {"name": "Ζω", "cents": 1100}
+  ]
+}

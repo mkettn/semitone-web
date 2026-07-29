@@ -1,0 +1,20 @@
+{
+  "name": "Chromatic",
+  "rootIndex": 9,
+  "rootOctave": 4,
+  "baseFrequency": 440,
+  "degrees": [
+    {"name": "C", "cents": 0},
+    {"name": "C#", "cents": 100},
+    {"name": "D", "cents": 200},
+    {"name": "D#", "cents": 300},
+    {"name": "E", "cents": 400},
+    {"name": "F", "cents": 500},
+    {"name": "F#", "cents": 600},
+    {"name": "G", "cents": 700},
+    {"name": "G#", "cents": 800},
+    {"name": "A", "cents": 900},
+    {"name": "A#", "cents": 1000},
+    {"name": "H", "cents": 1100}
+  ]
+}

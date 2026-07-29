@@ -13,27 +13,29 @@ piano (for now).
   original `CentErrorView`.
 - **Metronome** — adjustable BPM (20-300), beat indicator, synthesized
   click sounds (no bundled audio assets required).
-- **Settings** — just metronome "keep tick"; scale management lives on
-  the tuner tab itself (see below).
+- **Settings** — just metronome "keep tick"; scale management is its own
+  first-class area (see below), not buried in settings.
 - **Scales** — the tuner always matches detected pitches against
   whichever scale is active; there's no separate "standard" scale or a
-  toggle to turn matching on. A dropdown at the top of the tuner tab
-  switches between your saved scales, with buttons right next to it to
-  **New** (starting from the chromatic default), **Copy** the active
-  scale, **Delete** it (as long as it isn't the last one), **Export** it
-  to a `.json` file, or **Import** one — no extra screens or popups for
-  any of that. Out of the box you get five scales: the default
-  **Chromatic** one (C, C#, D, D#, E, F, F#, G, G#, A, A#, H — German
-  naming, H = B; delete the sharps to get plain C-D-E-F-G-A-H), and the
-  four genera of **Byzantine chant** theory (Modern Patriarchal
-  Committee 72-moria system) — Diatonic, Soft Chromatic, Hard Chromatic,
-  and Enharmonic — rooted on Νη (Ni), the *vasi* (base note).
+  toggle to turn matching on. The app bar's title is a live dropdown for
+  switching the active scale from anywhere. The **tune icon** next to it
+  opens **My Scales**, a full list with buttons to **New** (starting from
+  the chromatic default), **Copy**, **Delete** (as long as it isn't the
+  last one), **Export** a scale to a `.json` file, or **Import** one —
+  tapping a scale opens its editor directly, no extra popups for any of
+  it. Out of the box you get five scales, loaded from
+  `assets/scales/*.json` (see below): the default **Chromatic** one (C,
+  C#, D, D#, E, F, F#, G, G#, A, A#, H — German naming, H = B; delete the
+  sharps to get plain C-D-E-F-G-A-H), and the four genera of **Byzantine
+  chant** theory (Modern Patriarchal Committee 72-moria system) —
+  Diatonic, Soft Chromatic, Hard Chromatic, and Enharmonic — rooted on Νη
+  (Ni), the *vasi* (base note).
 
-  Editing a scale (the pencil button) opens its "cake" visualization:
-  each tone's wedge runs from the midpoint with its previous neighbour
-  to the midpoint with its next one. Duplicate a tone to split its wedge,
-  then move the copy to redraw where the octave gets split — or delete
-  tones to carve out a simpler scale.
+  A scale's editor shows its "cake" visualization: each tone's wedge runs
+  from the midpoint with its previous neighbour to the midpoint with its
+  next one. Duplicate a tone to split its wedge, then move the copy to
+  redraw where the octave gets split — or delete tones to carve out a
+  simpler scale.
 
   Each scale carries its **own base frequency** (in its editor, next to
   its root octave), rather than sharing one global concert pitch — so
@@ -41,6 +43,14 @@ piano (for now).
   and scales with no fixed concert pitch at all (like Byzantine chant,
   whose base note can be set to whatever the *vasi* happens to be) don't
   need to borrow another scale's A4.
+
+  **Adding a new pre-configured scale** is just dropping another `.json`
+  file into `assets/scales/` (same shape as `TuningScale.toJson()` —
+  `name`, `degrees` [`name`/`cents` pairs], `rootIndex`, `rootOctave`,
+  `baseFrequency`; `id` is optional, auto-generated) — no code changes.
+  Presets load in filename order (hence the `NN_` prefixes), which is
+  also seeding order, so `01_chromatic.json` stays first/active by
+  default.
 
 ## Getting started
 
@@ -64,13 +74,16 @@ flutter build linux --release
 ```
 lib/
   dsp/        pitch detection (autocorrelation, ported from DSP.java)
-  models/     ScaleDegree / TuningScale, ScalePreset (chromatic +
-              Byzantine chant starting points, also the initial seed data)
+  models/     ScaleDegree / TuningScale, scale_presets.dart (loads the
+              assets/scales/*.json presets via AssetManifest)
   services/   SettingsService (keep-tick + saved scales), TunerEngine
               (mic capture), MetronomeEngine, scale_io (export/import)
-  screens/    Tuner (incl. the scale switcher bar), Metronome, Settings,
-              Custom Scale Boundaries (per-scale editor)
+  screens/    Tuner, Metronome, Settings, My Scales (list), Custom Scale
+              Boundaries (per-scale editor)
   theme/      dark colour palette matching the original app
   widgets/    CentErrorBar (cents deviation indicator),
               ScaleCakeChart (octave-as-pie-chart editor visualization)
+
+assets/
+  scales/     pre-configured scales, one .json file per scale
 ```

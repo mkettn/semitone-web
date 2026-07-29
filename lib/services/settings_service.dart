@@ -8,14 +8,11 @@ import '../models/tuning_scale.dart';
 ///
 /// There's no "standard" scale separate from user-defined ones — the
 /// tuner always matches against whichever scale is active, out of a list
-/// that starts out seeded with the chromatic default and the four
-/// Byzantine chant genera (see [scalePresets]) and that the user can add
-/// to, edit, duplicate, or remove from freely.
+/// that starts out seeded with every bundled preset (see
+/// [loadPresetScales]) and that the user can add to, edit, duplicate, or
+/// remove from freely.
 class SettingsService extends ChangeNotifier {
-  SettingsService(this._prefs) {
-    _migrateLegacySingleScale();
-    _seedDefaultScalesIfEmpty();
-  }
+  SettingsService._(this._prefs);
 
   static const _keyKeepTick = 'keeptick';
   static const _keyScales = 'custom_scales';
@@ -26,7 +23,10 @@ class SettingsService extends ChangeNotifier {
 
   static Future<SettingsService> create() async {
     final prefs = await SharedPreferences.getInstance();
-    return SettingsService(prefs);
+    final settings = SettingsService._(prefs);
+    settings._migrateLegacySingleScale();
+    await settings._seedDefaultScalesIfEmpty();
+    return settings;
   }
 
   /// One-time migration from the single-scale storage format that
@@ -46,19 +46,14 @@ class SettingsService extends ChangeNotifier {
   }
 
   /// First run (or the legacy migration above found nothing usable):
-  /// seed the scale list with every built-in preset, active on the
-  /// chromatic one.
-  void _seedDefaultScalesIfEmpty() {
+  /// seed the scale list with every bundled preset, active on the first
+  /// one (Chromatic, by filename order — see [loadPresetScales]).
+  Future<void> _seedDefaultScalesIfEmpty() async {
     if (_prefs.getStringList(_keyScales)?.isNotEmpty ?? false) return;
-    final seeded = [
-      for (final preset in scalePresets) preset.build().copyWith(name: preset.name),
-    ];
+    final seeded = await loadPresetScales();
+    if (seeded.isEmpty) return;
     _writeScales(seeded);
-    final chromatic = seeded.firstWhere(
-      (s) => s.name == 'Chromatic',
-      orElse: () => seeded.first,
-    );
-    _prefs.setString(_keyActiveScaleId, chromatic.id);
+    _prefs.setString(_keyActiveScaleId, seeded.first.id);
   }
 
   bool get keepTick => _prefs.getBool(_keyKeepTick) ?? false;
