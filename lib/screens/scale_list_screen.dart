@@ -26,7 +26,7 @@ class _ScaleListScreenState extends State<ScaleListScreen> {
     );
     if (name == null || name.trim().isEmpty) return;
 
-    final scale = TuningScale.defaultDiatonic().copyWith(name: name.trim());
+    final scale = TuningScale.defaultChromatic().copyWith(name: name.trim());
     widget.settings.addScale(scale);
     setState(() {});
     if (!mounted) return;
@@ -114,7 +114,7 @@ class _ScaleListScreenState extends State<ScaleListScreen> {
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'No custom scales yet.\nTap + to create one, starting from C-D-E-F-G-A-H.',
+                  'No custom scales yet.\nTap + to create one, starting from the default chromatic scale.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: SemitoneColors.grey4),
                 ),

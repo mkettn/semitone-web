@@ -13,9 +13,10 @@ import '../widgets/scale_cake_chart.dart';
 ///
 /// The octave is visualized as a "cake": each tone owns a wedge running
 /// from the midpoint with its previous neighbour to the midpoint with its
-/// next one. Starting from the default C-D-E-F-G-A-H (German naming, H =
-/// B) diatonic scale, a tone can be duplicated ("copy") to split its wedge
-/// in two, and then repositioned to redraw where the octave gets split.
+/// next one. Starting from the default chromatic scale (C, C#, D, ... A,
+/// A#, H — German naming, H = B), a tone can be duplicated ("copy") to
+/// split its wedge in two, and then repositioned to redraw where the
+/// octave gets split.
 class CustomScaleScreen extends StatefulWidget {
   const CustomScaleScreen({
     super.key,
@@ -44,7 +45,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
     super.initState();
     _scale = widget.settings.customScales.firstWhere(
       (s) => s.id == widget.scaleId,
-      orElse: TuningScale.defaultDiatonic,
+      orElse: TuningScale.defaultChromatic,
     );
     _nameController = TextEditingController(text: _scale.name);
     _rootOctaveController =
@@ -121,7 +122,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   }
 
   void _resetToDefault() {
-    final def = TuningScale.defaultDiatonic();
+    final def = TuningScale.defaultChromatic();
     setState(() {
       _scale = _scale.copyWith(
         degrees: def.degrees,
@@ -144,7 +145,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.restart_alt),
-            tooltip: 'Reset to C-D-E-F-G-A-H',
+            tooltip: 'Reset to default chromatic scale',
             onPressed: _resetToDefault,
           ),
         ],

@@ -14,8 +14,8 @@ void main() {
     expect(settings.customScales, isEmpty);
     expect(settings.activeCustomScale, isNull);
 
-    final scale1 = TuningScale.defaultDiatonic().copyWith(name: 'myscale1');
-    final scale2 = TuningScale.defaultDiatonic().copyWith(name: 'myscale2');
+    final scale1 = TuningScale.defaultChromatic().copyWith(name: 'myscale1');
+    final scale2 = TuningScale.defaultChromatic().copyWith(name: 'myscale2');
     settings.addScale(scale1);
     settings.addScale(scale2);
 
@@ -34,7 +34,7 @@ void main() {
   });
 
   test('migrates a legacy single custom_scale entry into the new list', () async {
-    final legacy = TuningScale.defaultDiatonic().copyWith(name: 'old scale');
+    final legacy = TuningScale.defaultChromatic().copyWith(name: 'old scale');
     SharedPreferences.setMockInitialValues({
       'custom_scale': legacy.toJsonString(),
     });
@@ -52,7 +52,7 @@ void main() {
 
     expect(settings.activeScale.name, '12-tone equal temperament');
 
-    settings.addScale(TuningScale.defaultDiatonic().copyWith(name: 'mine'));
+    settings.addScale(TuningScale.defaultChromatic().copyWith(name: 'mine'));
     settings.useCustomScale = true;
     expect(settings.activeScale.name, 'mine');
 

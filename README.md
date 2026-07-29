@@ -20,11 +20,12 @@ piano (for now).
   Useful for microtonal or alternative tuning systems. You can save
   multiple named scales (e.g. "myscale1", "myscale2") under **Settings →
   My scales** and switch which one is active at any time. Each new scale
-  starts from the plain C-D-E-F-G-A-H diatonic scale (German naming, H =
-  B) and is visualized as a "cake": each tone's wedge runs from the
-  midpoint with its previous neighbour to the midpoint with its next one.
-  Duplicate a tone to split its wedge, then move the copy to redraw where
-  the octave gets split.
+  starts from the default chromatic scale (C, C#, D, D#, E, F, F#, G, G#,
+  A, A#, H — German naming, H = B) and is visualized as a "cake": each
+  tone's wedge runs from the midpoint with its previous neighbour to the
+  midpoint with its next one. Duplicate a tone to split its wedge, then
+  move the copy to redraw where the octave gets split — or delete tones
+  (e.g. down to just C-D-E-F-G-A-H) to carve out a simpler scale.
 
 ## Getting started
 

@@ -76,23 +76,25 @@ class TuningScale {
     );
   }
 
-  static const List<String> _diatonicNames = ['C', 'D', 'E', 'F', 'G', 'A', 'H'];
-  static const List<double> _diatonicCents = [0, 200, 400, 500, 700, 900, 1100];
+  static const List<String> _defaultScaleNames = [
+    'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'H',
+  ];
 
-  /// The default starting point for a user-defined scale: the plain
-  /// C-D-E-F-G-A-H (German note naming, H = B) diatonic scale, at its
-  /// standard 12-tone-equal-temperament positions. Because the whole/half
-  /// step pattern (W-W-H-W-W-W-H) isn't even, this already renders as an
-  /// asymmetric "cake" out of the box, inviting the user to reshape it.
-  factory TuningScale.defaultDiatonic() {
+  /// The default starting point for a new user-defined scale: the full
+  /// chromatic scale using German note naming (C, C#, D, ... A, A#, H,
+  /// where H = B), at standard 12-tone-equal-temperament positions —
+  /// including the sharps, not just the C-D-E-F-G-A-H natural notes.
+  /// Renders as 12 equal wedges of the cake, inviting the user to
+  /// reshape, rename, remove, or duplicate them.
+  factory TuningScale.defaultChromatic() {
     final degs = [
-      for (var i = 0; i < _diatonicNames.length; i++)
-        ScaleDegree(name: _diatonicNames[i], cents: _diatonicCents[i]),
+      for (var i = 0; i < _defaultScaleNames.length; i++)
+        ScaleDegree(name: _defaultScaleNames[i], cents: i * 100.0),
     ];
     return TuningScale(
       name: 'My scale',
       degrees: degs,
-      rootIndex: _diatonicNames.indexOf('A'),
+      rootIndex: _defaultScaleNames.indexOf('A'),
       rootOctave: 4,
     );
   }
