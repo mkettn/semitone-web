@@ -1,0 +1,154 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Cancel a stale in-flight deploy for this PR when a newer push arrives.
+# Shares its group name with pr-preview-cleanup.yml so a close event queues
+# behind an in-progress deploy instead of racing it.
+concurrency:
+  group: pr-preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    env:
+      PR_NUMBER: ${{ github.event.number }}
+      PREVIEW_BASE_URL: ${{ vars.PREVIEW_BASE_URL }}
+      REMOTE_BASE_PATH: ${{ vars.REMOTE_BASE_PATH }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+      SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # PREVIEW_BASE_URL is the public site (e.g. https://previews.example.com),
+      # never SSH_HOST — the two may point at completely different hostnames.
+      - name: Compute preview URL
+        id: preview
+        run: |
+          if [ -z "$PREVIEW_BASE_URL" ]; then
+            echo "::error::vars.PREVIEW_BASE_URL is not set." >&2
+            exit 1
+          fi
+          PREVIEW_URL="${PREVIEW_BASE_URL%/}/pr-${PR_NUMBER}/"
+          echo "url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+
+          # --base-href must be an absolute *path* ("/…/", not a full URL) —
+          # flutter build web rejects anything not starting and ending with
+          # "/", even though the resulting <base href> tag would happily
+          # accept an absolute URL. Derive it from PREVIEW_BASE_URL's own
+          # path component (e.g. "/club_office/"), which is empty when
+          # PREVIEW_BASE_URL is bare domain.
+          no_scheme="${PREVIEW_BASE_URL#*://}"
+          if [[ "$no_scheme" == */* ]]; then
+            base_path="/${no_scheme#*/}"
+          else
+            base_path="/"
+          fi
+          BASE_HREF="${base_path%/}/pr-${PR_NUMBER}/"
+          echo "base_href=${BASE_HREF}" >> "$GITHUB_OUTPUT"
+
+      - name: Build web
+        run: |
+          flutter build web --release \
+            --base-href "${{ steps.preview.outputs.base_href }}"
+
+      - name: Install lftp
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y lftp
+
+      # Routes lftp's sftp backend through the system ssh binary so it works
+      # with plain key or password auth, and with SFTP-only (chrooted, no
+      # shell/rsync) accounts.
+      - name: Configure SFTP auth
+        id: ssh_auth
+        run: |
+          PORT="${SSH_PORT:-22}"
+          echo "port=${PORT}" >> "$GITHUB_OUTPUT"
+
+          # -l $SSH_USERNAME is required here even though `open` below also
+          # embeds the username in its sftp:// URL: lftp's sftp:connect-program
+          # invokes this command with only host/port, never the username from
+          # that URL — omitting -l silently authenticates as the local
+          # runner's own OS user ("runner" on GitHub-hosted runners) instead,
+          # which the remote sshd logs as "Invalid user runner" and often
+          # just hangs on rather than rejecting outright.
+          #
+          # ConnectTimeout guards against a silent network-level hang (e.g. a
+          # firewall dropping packets instead of rejecting the connection).
+          if [ -n "$SSH_PRIVATE_KEY" ]; then
+            KEY_PATH="${RUNNER_TEMP}/deploy_key"
+            printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY_PATH"
+            chmod 600 "$KEY_PATH"
+            # BatchMode=yes: never prompt (passphrase, unknown host, etc.) —
+            # fail fast with a clear error instead of hanging forever. If
+            # this starts failing, the key most likely has a passphrase;
+            # CI deploy keys must be passphrase-less.
+            echo "connect_program=ssh -l ${SSH_USERNAME} -i ${KEY_PATH} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15" >> "$GITHUB_OUTPUT"
+          elif [ -n "$SSH_PASSWORD" ]; then
+            sudo apt-get install -y sshpass
+            echo "SSHPASS=${SSH_PASSWORD}" >> "$GITHUB_ENV"
+            # PreferredAuthentications=password (+ disabling pubkey) forces
+            # the classic "Password:" prompt sshpass actually answers —
+            # without it, a server offering keyboard-interactive first can
+            # leave sshpass waiting on a prompt it never recognizes.
+            echo "connect_program=sshpass -e ssh -l ${SSH_USERNAME} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=15" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Set either the SSH_PRIVATE_KEY or SSH_PASSWORD secret." >&2
+            exit 1
+          fi
+
+      - name: Deploy to server via SFTP
+        # Belt-and-suspenders alongside BatchMode/ConnectTimeout above: fail
+        # within minutes instead of eating the whole job's multi-hour cap if
+        # something still manages to hang.
+        timeout-minutes: 5
+        env:
+          CONNECT_PROGRAM: ${{ steps.ssh_auth.outputs.connect_program }}
+          PORT: ${{ steps.ssh_auth.outputs.port }}
+        run: |
+          REMOTE_DIR="${REMOTE_BASE_PATH%/}/pr-${PR_NUMBER}"
+          # No quotes around $CONNECT_PROGRAM: lftp's `set` takes the rest of
+          # the line as the literal value, quotes included — wrapping it in
+          # "..." makes lftp try to exec a program literally named
+          # `"ssh -i ... "` (with the quote characters in the filename) and
+          # fail silently into an FTP-style anonymous-login hang instead of
+          # ever running ssh.
+          lftp -e "
+          set sftp:connect-program $CONNECT_PROGRAM
+          open sftp://${SSH_USERNAME}@${SSH_HOST}:${PORT}
+          mkdir -p $REMOTE_DIR
+          mirror -R --delete --verbose build/web $REMOTE_DIR
+          bye
+          "
+
+      - name: Comment preview URL on PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-preview
+          message: |
+            ### 🚀 Preview deployed
+
+            ${{ steps.preview.outputs.url }}
+
+            Updated from ${{ github.sha }}.
