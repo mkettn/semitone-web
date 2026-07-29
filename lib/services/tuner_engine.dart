@@ -34,6 +34,18 @@ class TunerEngine {
   final List<double> _history = List.filled(_histSize, 0, growable: true);
   int _concertA = 440;
 
+  // The sample rate actually delivered by the platform can differ from the
+  // one requested in RecordConfig — notably on web, where the browser's
+  // AudioContext silently overrides it to match the device's native rate
+  // (see record_web's `adjustConfig`). Trusting the requested constant there
+  // produces a fixed, device-dependent pitch offset, so we measure the
+  // effective rate at runtime from elapsed time vs. samples received.
+  final Stopwatch _captureClock = Stopwatch();
+  int _samplesCounted = 0;
+  double _effectiveSampleRate = 0;
+
+  static const _calibrationMinMs = 500;
+
   Stream<PitchReading> get readings => _controller.stream;
 
   set concertA(int value) => _concertA = value;
@@ -68,7 +80,20 @@ class TunerEngine {
     final byteBuffer = BytesBuilder();
     final neededBytes = bufferSize * 2; // 16-bit samples
 
+    _captureClock
+      ..reset()
+      ..stop();
+    _samplesCounted = 0;
+    _effectiveSampleRate = sampleRate.toDouble();
+
     _sub = stream.listen((chunk) {
+      if (!_captureClock.isRunning) _captureClock.start();
+      _samplesCounted += chunk.length ~/ 2;
+      if (_captureClock.elapsedMilliseconds >= _calibrationMinMs) {
+        _effectiveSampleRate =
+            _samplesCounted / (_captureClock.elapsedMilliseconds / 1000.0);
+      }
+
       byteBuffer.add(chunk);
       final bytes = byteBuffer.toBytes();
       if (bytes.length < neededBytes) return;
@@ -85,7 +110,7 @@ class TunerEngine {
         samples[i] = s / 1024.0;
       }
 
-      final freq = _detector.frequency(samples, sampleRate);
+      final freq = _detector.frequency(samples, _effectiveSampleRate);
       if (freq == null || freq.isNaN || freq <= 0) return;
 
       final semitone = 12 * (math.log(freq / _concertA) / math.ln2);
@@ -102,6 +127,7 @@ class TunerEngine {
   Future<void> stop() async {
     await _sub?.cancel();
     _sub = null;
+    _captureClock.stop();
     await _recorder.stop();
   }
 

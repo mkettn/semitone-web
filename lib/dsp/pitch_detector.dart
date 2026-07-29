@@ -102,7 +102,7 @@ class PitchDetector {
 
   /// Estimate the fundamental frequency (Hz) of [buf] (length == fftLen)
   /// sampled at [sampleRate]. Returns null if no clear pitch was found.
-  double? frequency(Float64List buf, int sampleRate) {
+  double? frequency(Float64List buf, num sampleRate) {
     _autocorr(buf);
 
     var looking = false;
