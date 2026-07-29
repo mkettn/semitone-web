@@ -67,10 +67,5 @@ class SettingsService extends ChangeNotifier {
     return TuningScale.defaultTwelveTet();
   }
 
-  TuningScale _defaultCustomScale() => TuningScale(
-        name: 'My scale',
-        degrees: TuningScale.defaultTwelveTet().degrees,
-        rootIndex: 9,
-        rootOctave: 4,
-      );
+  TuningScale _defaultCustomScale() => TuningScale.defaultDiatonic();
 }

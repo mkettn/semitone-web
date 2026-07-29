@@ -17,7 +17,12 @@ piano (for now).
 - **Custom scale boundaries** *(new)* — define your own named tone heights
   (in cents within an octave) instead of standard 12-tone equal
   temperament, and have the tuner match detected pitches against them.
-  Useful for microtonal or alternative tuning systems.
+  Useful for microtonal or alternative tuning systems. Starts from the
+  plain C-D-E-F-G-A-H diatonic scale (German naming, H = B) and is
+  visualized as a "cake": each tone's wedge runs from the midpoint with
+  its previous neighbour to the midpoint with its next one. Duplicate a
+  tone to split its wedge, then move the copy to redraw where the octave
+  gets split.
 
 ## Getting started
 
@@ -45,5 +50,6 @@ lib/
   services/   SettingsService, TunerEngine (mic capture), MetronomeEngine
   screens/    Tuner, Metronome, Settings, Custom Scale Boundaries
   theme/      dark colour palette matching the original app
-  widgets/    CentErrorBar (cents deviation indicator)
+  widgets/    CentErrorBar (cents deviation indicator),
+              ScaleCakeChart (octave-as-pie-chart editor visualization)
 ```

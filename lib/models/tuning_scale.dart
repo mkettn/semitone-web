@@ -66,6 +66,42 @@ class TuningScale {
     );
   }
 
+  static const List<String> _diatonicNames = ['C', 'D', 'E', 'F', 'G', 'A', 'H'];
+  static const List<double> _diatonicCents = [0, 200, 400, 500, 700, 900, 1100];
+
+  /// The default starting point for a user-defined scale: the plain
+  /// C-D-E-F-G-A-H (German note naming, H = B) diatonic scale, at its
+  /// standard 12-tone-equal-temperament positions. Because the whole/half
+  /// step pattern (W-W-H-W-W-W-H) isn't even, this already renders as an
+  /// asymmetric "cake" out of the box, inviting the user to reshape it.
+  factory TuningScale.defaultDiatonic() {
+    final degs = [
+      for (var i = 0; i < _diatonicNames.length; i++)
+        ScaleDegree(name: _diatonicNames[i], cents: _diatonicCents[i]),
+    ];
+    return TuningScale(
+      name: 'My scale',
+      degrees: degs,
+      rootIndex: _diatonicNames.indexOf('A'),
+      rootOctave: 4,
+    );
+  }
+
+  /// The lower boundary (start angle, in cents) of each degree's slice,
+  /// i.e. the midpoint between it and its previous neighbour — the same
+  /// circular Voronoi partition [match] uses internally. Together with the
+  /// next entry (wrapping to +1200 after the last), this gives the cake
+  /// wedge each degree owns.
+  List<double> get sliceBoundaries {
+    final n = degrees.length;
+    if (n == 0) return const [];
+    if (n == 1) return const [0];
+    return List.generate(n, (i) {
+      final prev = degrees[(i - 1) % n].cents - (i == 0 ? 1200 : 0);
+      return (prev + degrees[i].cents) / 2;
+    });
+  }
+
   /// Match a detected [totalCentsFromReference] (i.e.
   /// `1200 * log2(freq / referenceFreq)`) against this scale, returning the
   /// nearest degree, its octave, and signed error in cents.
