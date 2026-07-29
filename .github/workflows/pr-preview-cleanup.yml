@@ -14,61 +14,28 @@ permissions:
   contents: read
 
 jobs:
-  cleanup-preview:
+  compute:
     runs-on: ubuntu-latest
-    env:
-      PR_NUMBER: ${{ github.event.number }}
-      REMOTE_BASE_PATH: ${{ vars.REMOTE_BASE_PATH }}
-      SSH_HOST: ${{ secrets.SSH_HOST }}
-      SSH_PORT: ${{ secrets.SSH_PORT }}
-      SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
-      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+    outputs:
+      remote_dir: ${{ steps.compute.outputs.remote_dir }}
     steps:
-      # Needed for scripts/*.sh below — this job otherwise touches nothing
-      # in the working tree.
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install lftp
-        run: scripts/setup-sftp.sh
-
-      - name: Configure SFTP auth
-        id: ssh_auth
-        run: scripts/config-sftp.sh
-
-      - name: Remove PR preview folder
-        # Belt-and-suspenders alongside BatchMode/ConnectTimeout in
-        # config-sftp.sh: fail within minutes instead of eating the whole
-        # job's multi-hour cap if something still manages to hang.
-        timeout-minutes: 5
+      - name: Compute remote dir
+        id: compute
         env:
-          CONNECT_PROGRAM: ${{ steps.ssh_auth.outputs.connect_program }}
-          PORT: ${{ steps.ssh_auth.outputs.port }}
+          REMOTE_BASE_PATH: ${{ vars.REMOTE_BASE_PATH }}
+          PR_NUMBER: ${{ github.event.number }}
         run: |
-          REMOTE_DIR="${REMOTE_BASE_PATH%/}/pr-${PR_NUMBER}"
+          echo "remote_dir=${REMOTE_BASE_PATH%/}/pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
 
-          # No quotes around $CONNECT_PROGRAM below: lftp's `set` takes the
-          # rest of the line as the literal value, quotes included — see
-          # pr-preview.yml's deploy step for the full explanation.
-          set +e
-          lftp -e "
-          set sftp:connect-program $CONNECT_PROGRAM
-          open sftp://${SSH_USERNAME}@${SSH_HOST}:${PORT}
-          cd $REMOTE_DIR
-          bye
-          " >/dev/null 2>&1
-          EXISTS=$?
-          set -e
-
-          if [ "$EXISTS" -ne 0 ]; then
-            echo "Remote folder $REMOTE_DIR does not exist, nothing to clean up."
-            exit 0
-          fi
-
-          lftp -e "
-          set sftp:connect-program $CONNECT_PROGRAM
-          open sftp://${SSH_USERNAME}@${SSH_HOST}:${PORT}
-          rm -rf $REMOTE_DIR
-          bye
-          "
+  cleanup:
+    needs: compute
+    uses: ./.github/workflows/reusable-sftp-deploy.yml
+    with:
+      action: delete
+      remote_dir: ${{ needs.compute.outputs.remote_dir }}
+    secrets:
+      ssh_host: ${{ secrets.SSH_HOST }}
+      ssh_port: ${{ secrets.SSH_PORT }}
+      ssh_username: ${{ secrets.SSH_USERNAME }}
+      ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      ssh_password: ${{ secrets.SSH_PASSWORD }}

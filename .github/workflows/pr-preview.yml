@@ -16,41 +16,28 @@ permissions:
   pull-requests: write
 
 jobs:
-  deploy-preview:
+  compute:
     runs-on: ubuntu-latest
-    env:
-      PR_NUMBER: ${{ github.event.number }}
-      PREVIEW_BASE_URL: ${{ vars.PREVIEW_BASE_URL }}
-      REMOTE_BASE_PATH: ${{ vars.REMOTE_BASE_PATH }}
-      SSH_HOST: ${{ secrets.SSH_HOST }}
-      SSH_PORT: ${{ secrets.SSH_PORT }}
-      SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
-      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+    outputs:
+      url: ${{ steps.compute.outputs.url }}
+      base_href: ${{ steps.compute.outputs.base_href }}
+      remote_dir: ${{ steps.compute.outputs.remote_dir }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
       # PREVIEW_BASE_URL is the public site (e.g. https://previews.example.com),
       # never SSH_HOST — the two may point at completely different hostnames.
-      - name: Compute preview URL
-        id: preview
+      - name: Compute preview URL and paths
+        id: compute
+        env:
+          PREVIEW_BASE_URL: ${{ vars.PREVIEW_BASE_URL }}
+          REMOTE_BASE_PATH: ${{ vars.REMOTE_BASE_PATH }}
+          PR_NUMBER: ${{ github.event.number }}
         run: |
           if [ -z "$PREVIEW_BASE_URL" ]; then
             echo "::error::vars.PREVIEW_BASE_URL is not set." >&2
             exit 1
           fi
-          PREVIEW_URL="${PREVIEW_BASE_URL%/}/pr-${PR_NUMBER}/"
-          echo "url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+          echo "url=${PREVIEW_BASE_URL%/}/pr-${PR_NUMBER}/" >> "$GITHUB_OUTPUT"
+          echo "remote_dir=${REMOTE_BASE_PATH%/}/pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
 
           # --base-href must be an absolute *path* ("/…/", not a full URL) —
           # flutter build web rejects anything not starting and ending with
@@ -64,33 +51,26 @@ jobs:
           else
             base_path="/"
           fi
-          BASE_HREF="${base_path%/}/pr-${PR_NUMBER}/"
-          echo "base_href=${BASE_HREF}" >> "$GITHUB_OUTPUT"
+          echo "base_href=${base_path%/}/pr-${PR_NUMBER}/" >> "$GITHUB_OUTPUT"
 
-      - name: Build web
-        run: |
-          flutter build web --release \
-            --base-href "${{ steps.preview.outputs.base_href }}"
+  deploy:
+    needs: compute
+    uses: ./.github/workflows/reusable-sftp-deploy.yml
+    with:
+      action: sync
+      base_href: ${{ needs.compute.outputs.base_href }}
+      remote_dir: ${{ needs.compute.outputs.remote_dir }}
+    secrets:
+      ssh_host: ${{ secrets.SSH_HOST }}
+      ssh_port: ${{ secrets.SSH_PORT }}
+      ssh_username: ${{ secrets.SSH_USERNAME }}
+      ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      ssh_password: ${{ secrets.SSH_PASSWORD }}
 
-      - name: Install lftp
-        run: scripts/setup-sftp.sh
-
-      - name: Configure SFTP auth
-        id: ssh_auth
-        run: scripts/config-sftp.sh
-
-      - name: Deploy to server via SFTP
-        # Belt-and-suspenders alongside BatchMode/ConnectTimeout in
-        # config-sftp.sh: fail within minutes instead of eating the whole
-        # job's multi-hour cap if something still manages to hang.
-        timeout-minutes: 5
-        env:
-          CONNECT_PROGRAM: ${{ steps.ssh_auth.outputs.connect_program }}
-          PORT: ${{ steps.ssh_auth.outputs.port }}
-        run: |
-          REMOTE_DIR="${REMOTE_BASE_PATH%/}/pr-${PR_NUMBER}"
-          scripts/upload.sh build/web "$REMOTE_DIR"
-
+  comment:
+    needs: [compute, deploy]
+    runs-on: ubuntu-latest
+    steps:
       - name: Comment preview URL on PR
         uses: marocchino/sticky-pull-request-comment@v2
         with:
@@ -98,6 +78,6 @@ jobs:
           message: |
             ### 🚀 Preview deployed
 
-            ${{ steps.preview.outputs.url }}
+            ${{ needs.compute.outputs.url }}
 
             Updated from ${{ github.sha }}.
