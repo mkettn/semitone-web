@@ -13,11 +13,33 @@ piano (for now).
   original `CentErrorView`.
 - **Metronome** — adjustable BPM (20-300), beat indicator, synthesized
   click sounds (no bundled audio assets required).
-- **Settings** — concert pitch (A4, default 440 Hz), metronome "keep tick".
+- **Settings** — concert pitch (A4, default 440 Hz, used by the standard
+  chromatic scale), metronome "keep tick".
 - **Custom scale boundaries** *(new)* — define your own named tone heights
   (in cents within an octave) instead of standard 12-tone equal
   temperament, and have the tuner match detected pitches against them.
-  Useful for microtonal or alternative tuning systems.
+  Useful for microtonal or alternative tuning systems. You can save
+  multiple named scales (e.g. "myscale1", "myscale2") under **Settings →
+  My scales** and switch which one is active at any time. Each is
+  visualized as a "cake": each tone's wedge runs from the midpoint with
+  its previous neighbour to the midpoint with its next one. Duplicate a
+  tone to split its wedge, then move the copy to redraw where the octave
+  gets split — or delete tones to carve out a simpler scale. When
+  creating a new scale you pick a starting point:
+    - the default chromatic scale (C, C#, D, D#, E, F, F#, G, G#, A, A#,
+      H — German naming, H = B; delete the sharps to get plain
+      C-D-E-F-G-A-H), or
+    - one of the four genera of **Byzantine chant** theory (Modern
+      Patriarchal Committee 72-moria system) — Diatonic, Soft Chromatic,
+      Hard Chromatic, and Enharmonic — rooted on Νη (Ni), the *vasi*
+      (base note).
+
+  Each scale carries its **own base frequency** (in its editor, next to
+  its root octave), rather than sharing one global concert pitch — so
+  you can have several scales tuned to different references at once,
+  and scales with no fixed concert pitch at all (like Byzantine chant,
+  whose base note can be set to whatever the *vasi* happens to be) don't
+  need to borrow the standard scale's A4.
 
 ## Getting started
 
@@ -41,9 +63,12 @@ flutter build linux --release
 ```
 lib/
   dsp/        pitch detection (autocorrelation, ported from DSP.java)
-  models/     ScaleDegree / TuningScale (12-TET default + custom scales)
+  models/     ScaleDegree / TuningScale (12-TET default + custom scales),
+              ScalePreset (chromatic + Byzantine chant starting points)
   services/   SettingsService, TunerEngine (mic capture), MetronomeEngine
-  screens/    Tuner, Metronome, Settings, Custom Scale Boundaries
+  screens/    Tuner, Metronome, Settings, My Scales (list), Custom Scale
+              Boundaries (per-scale editor)
   theme/      dark colour palette matching the original app
-  widgets/    CentErrorBar (cents deviation indicator)
+  widgets/    CentErrorBar (cents deviation indicator),
+              ScaleCakeChart (octave-as-pie-chart editor visualization)
 ```

@@ -24,8 +24,6 @@ class _TunerScreenState extends State<TunerScreen> {
   @override
   void initState() {
     super.initState();
-    widget.settings.addListener(_onSettingsChanged);
-    _onSettingsChanged();
     _init();
   }
 
@@ -38,14 +36,9 @@ class _TunerScreenState extends State<TunerScreen> {
     if (mounted) setState(() {});
   }
 
-  void _onSettingsChanged() {
-    _engine.concertA = widget.settings.concertA;
-  }
-
   void _onReading(PitchReading reading) {
     final scale = widget.settings.activeScale;
-    final totalCents = reading.semitone * 100;
-    final match = scale.match(totalCents);
+    final match = scale.matchFrequency(reading.frequency);
     if (mounted) setState(() => _match = match);
   }
 
@@ -61,7 +54,6 @@ class _TunerScreenState extends State<TunerScreen> {
 
   @override
   void dispose() {
-    widget.settings.removeListener(_onSettingsChanged);
     _engine.dispose();
     super.dispose();
   }

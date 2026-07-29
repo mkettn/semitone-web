@@ -26,13 +26,24 @@ class ScaleMatch {
 /// support custom / microtonal scales.
 class TuningScale {
   TuningScale({
+    String? id,
     required this.name,
     required List<ScaleDegree> degrees,
     this.rootIndex = 0,
     this.rootOctave = 4,
-  }) : degrees = List.unmodifiable(
+    this.baseFrequency = 440,
+  })  : id = id ?? _generateId(),
+        degrees = List.unmodifiable(
           [...degrees]..sort((a, b) => a.cents.compareTo(b.cents)),
         );
+
+  /// Stable identity used to select/store/update this scale independently
+  /// of its (user-editable, possibly duplicated) name.
+  final String id;
+
+  static int _idCounter = 0;
+  static String _generateId() =>
+      '${DateTime.now().microsecondsSinceEpoch}-${_idCounter++}';
 
   final String name;
 
@@ -40,20 +51,28 @@ class TuningScale {
   final List<ScaleDegree> degrees;
 
   /// Index (into the *sorted* [degrees]) of the degree that lines up with
-  /// the reference pitch (concert A) at [rootOctave].
+  /// [baseFrequency] at [rootOctave].
   final int rootIndex;
 
   /// Octave number assigned to [rootIndex] when the detected pitch exactly
-  /// matches the reference frequency.
+  /// matches [baseFrequency].
   final int rootOctave;
+
+  /// The pitch, in Hz, of the degree at [rootIndex]. Each scale carries its
+  /// own base pitch rather than sharing one global "concert pitch" — e.g.
+  /// standard 12-TET tracks the app's concert-A setting, but a scale with
+  /// no fixed concert pitch (such as a Byzantine chant genus, rooted on
+  /// whatever frequency the *vasi* happens to be) can be tuned
+  /// independently of it and of every other saved scale.
+  final double baseFrequency;
 
   static const List<String> _chromaticNames = [
     'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
   ];
 
   /// Standard 12-tone equal temperament, rooted so that "A" lines up with
-  /// the configured concert pitch (matches the original Semitone app).
-  factory TuningScale.defaultTwelveTet() {
+  /// [concertA] (matches the original Semitone app).
+  factory TuningScale.defaultTwelveTet({double concertA = 440}) {
     final degs = [
       for (var i = 0; i < 12; i++)
         ScaleDegree(name: _chromaticNames[i], cents: i * 100.0),
@@ -63,11 +82,58 @@ class TuningScale {
       degrees: degs,
       rootIndex: _chromaticNames.indexOf('A'),
       rootOctave: 4,
+      baseFrequency: concertA,
     );
   }
 
+  static const List<String> _defaultScaleNames = [
+    'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'H',
+  ];
+
+  /// The default starting point for a new user-defined scale: the full
+  /// chromatic scale using German note naming (C, C#, D, ... A, A#, H,
+  /// where H = B), at standard 12-tone-equal-temperament positions —
+  /// including the sharps, not just the C-D-E-F-G-A-H natural notes.
+  /// Renders as 12 equal wedges of the cake, inviting the user to
+  /// reshape, rename, remove, or duplicate them.
+  factory TuningScale.defaultChromatic() {
+    final degs = [
+      for (var i = 0; i < _defaultScaleNames.length; i++)
+        ScaleDegree(name: _defaultScaleNames[i], cents: i * 100.0),
+    ];
+    return TuningScale(
+      name: 'My scale',
+      degrees: degs,
+      rootIndex: _defaultScaleNames.indexOf('A'),
+      rootOctave: 4,
+    );
+  }
+
+  /// The lower boundary (start angle, in cents) of each degree's slice,
+  /// i.e. the midpoint between it and its previous neighbour — the same
+  /// circular Voronoi partition [match] uses internally. Together with the
+  /// next entry (wrapping to +1200 after the last), this gives the cake
+  /// wedge each degree owns.
+  List<double> get sliceBoundaries {
+    final n = degrees.length;
+    if (n == 0) return const [];
+    if (n == 1) return const [0];
+    return List.generate(n, (i) {
+      final prev = degrees[(i - 1) % n].cents - (i == 0 ? 1200 : 0);
+      return (prev + degrees[i].cents) / 2;
+    });
+  }
+
+  /// Match a detected fundamental frequency in Hz against this scale,
+  /// converting it to cents relative to [baseFrequency] and delegating to
+  /// [match].
+  ScaleMatch matchFrequency(double freq) {
+    final totalCents = 1200 * (math.log(freq / baseFrequency) / math.ln2);
+    return match(totalCents);
+  }
+
   /// Match a detected [totalCentsFromReference] (i.e.
-  /// `1200 * log2(freq / referenceFreq)`) against this scale, returning the
+  /// `1200 * log2(freq / baseFrequency)`) against this scale, returning the
   /// nearest degree, its octave, and signed error in cents.
   ScaleMatch match(double totalCentsFromReference) {
     if (degrees.isEmpty) {
@@ -107,20 +173,37 @@ class TuningScale {
     List<ScaleDegree>? degrees,
     int? rootIndex,
     int? rootOctave,
+    double? baseFrequency,
   }) {
     return TuningScale(
+      id: id,
       name: name ?? this.name,
       degrees: degrees ?? this.degrees,
       rootIndex: rootIndex ?? this.rootIndex,
       rootOctave: rootOctave ?? this.rootOctave,
+      baseFrequency: baseFrequency ?? this.baseFrequency,
+    );
+  }
+
+  /// A copy with a fresh [id], for duplicating a whole scale (as opposed to
+  /// [copyWith], which preserves identity for in-place edits).
+  TuningScale duplicate({String? name}) {
+    return TuningScale(
+      name: name ?? '${this.name} (copy)',
+      degrees: degrees,
+      rootIndex: rootIndex,
+      rootOctave: rootOctave,
+      baseFrequency: baseFrequency,
     );
   }
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'name': name,
         'degrees': degrees.map((d) => d.toJson()).toList(),
         'rootIndex': rootIndex,
         'rootOctave': rootOctave,
+        'baseFrequency': baseFrequency,
       };
 
   factory TuningScale.fromJson(Map<String, dynamic> json) {
@@ -134,10 +217,12 @@ class TuningScale {
       rootIndex = math.max(0, math.min(rootIndex, degs.length - 1));
     }
     return TuningScale(
+      id: json['id'] as String?,
       name: json['name'] as String? ?? 'Custom scale',
       degrees: degs,
       rootIndex: rootIndex,
       rootOctave: json['rootOctave'] as int? ?? 4,
+      baseFrequency: (json['baseFrequency'] as num?)?.toDouble() ?? 440,
     );
   }
 

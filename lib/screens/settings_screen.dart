@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/settings_service.dart';
 import '../theme/semitone_theme.dart';
-import 'custom_scale_screen.dart';
+import 'scale_list_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.settings});
@@ -38,6 +38,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  String _scalesSubtitle() {
+    final scales = widget.settings.customScales;
+    if (scales.isEmpty) return 'No scales saved yet';
+    final active = widget.settings.activeCustomScale;
+    return '${scales.length} saved'
+        '${active != null ? ' • active: ${active.name}' : ''}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -50,7 +58,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const _SectionHeader('Global'),
               ListTile(
                 title: const Text('Concert pitch (A4)'),
-                subtitle: const Text('Reference frequency used by the tuner'),
+                subtitle: const Text(
+                  'Used by the standard chromatic scale. Custom scales set '
+                  'their own base frequency in their editor.',
+                ),
                 trailing: SizedBox(
                   width: 80,
                   child: TextField(
@@ -85,16 +96,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onChanged: (v) => widget.settings.useCustomScale = v,
               ),
               ListTile(
-                title: const Text('Custom scale boundaries'),
-                subtitle: Text(
-                  '${widget.settings.customScale.degrees.length} tone heights defined',
-                ),
+                title: const Text('My scales'),
+                subtitle: Text(_scalesSubtitle()),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
                   await Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) =>
-                          CustomScaleScreen(settings: widget.settings),
+                      builder: (_) => ScaleListScreen(settings: widget.settings),
                     ),
                   );
                   setState(() {});
