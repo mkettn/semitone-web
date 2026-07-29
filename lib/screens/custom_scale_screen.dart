@@ -6,10 +6,10 @@ import '../services/settings_service.dart';
 import '../theme/semitone_theme.dart';
 import '../widgets/scale_cake_chart.dart';
 
-/// New feature: lets the user define their own tone-height boundaries
-/// (name + position in cents within an octave) instead of relying on
-/// standard 12-tone equal temperament. The tuner matches detected pitches
-/// against these boundaries when "Use custom scale boundaries" is enabled.
+/// Editor for one saved scale's tone-height boundaries (name + position
+/// in cents within an octave). Reached from the tuner tab's scale
+/// switcher, either to edit the active scale or right after creating or
+/// duplicating one.
 ///
 /// The octave is visualized as a "cake": each tone owns a wedge running
 /// from the midpoint with its previous neighbour to the midpoint with its
@@ -32,7 +32,7 @@ class CustomScaleScreen extends StatefulWidget {
 
   final SettingsService settings;
 
-  /// Id of the saved scale (from [SettingsService.customScales]) being
+  /// Id of the saved scale (from [SettingsService.scales]) being
   /// edited.
   final String scaleId;
 
@@ -50,7 +50,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   @override
   void initState() {
     super.initState();
-    _scale = widget.settings.customScales.firstWhere(
+    _scale = widget.settings.scales.firstWhere(
       (s) => s.id == widget.scaleId,
       orElse: TuningScale.defaultChromatic,
     );

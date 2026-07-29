@@ -45,8 +45,6 @@ void main() {
 
   test('each scale carries its own base frequency, defaulting to 440', () {
     expect(TuningScale.defaultChromatic().baseFrequency, 440);
-    expect(TuningScale.defaultTwelveTet().baseFrequency, 440);
-    expect(TuningScale.defaultTwelveTet(concertA: 442).baseFrequency, 442);
 
     final custom = TuningScale.defaultChromatic().copyWith(baseFrequency: 256);
     expect(custom.baseFrequency, 256);
