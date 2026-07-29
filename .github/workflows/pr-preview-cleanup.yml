@@ -1,0 +1,41 @@
+name: PR Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+# Shares its group name with pr-preview.yml so this queues behind an
+# in-progress deploy for the same PR instead of racing it.
+concurrency:
+  group: pr-preview-${{ github.event.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  compute:
+    runs-on: ubuntu-latest
+    outputs:
+      remote_dir: ${{ steps.compute.outputs.remote_dir }}
+    steps:
+      - name: Compute remote dir
+        id: compute
+        env:
+          REMOTE_BASE_PATH: ${{ vars.REMOTE_BASE_PATH }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          echo "remote_dir=${REMOTE_BASE_PATH%/}/pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+
+  cleanup:
+    needs: compute
+    uses: ./.github/workflows/reusable-sftp-deploy.yml
+    with:
+      action: delete
+      remote_dir: ${{ needs.compute.outputs.remote_dir }}
+    secrets:
+      ssh_host: ${{ secrets.SSH_HOST }}
+      ssh_port: ${{ secrets.SSH_PORT }}
+      ssh_username: ${{ secrets.SSH_USERNAME }}
+      ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      ssh_password: ${{ secrets.SSH_PASSWORD }}

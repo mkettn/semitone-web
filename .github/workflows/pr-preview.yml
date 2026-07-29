@@ -1,0 +1,83 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Cancel a stale in-flight deploy for this PR when a newer push arrives.
+# Shares its group name with pr-preview-cleanup.yml so a close event queues
+# behind an in-progress deploy instead of racing it.
+concurrency:
+  group: pr-preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  compute:
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.compute.outputs.url }}
+      base_href: ${{ steps.compute.outputs.base_href }}
+      remote_dir: ${{ steps.compute.outputs.remote_dir }}
+    steps:
+      # PREVIEW_BASE_URL is the public site (e.g. https://previews.example.com),
+      # never SSH_HOST — the two may point at completely different hostnames.
+      - name: Compute preview URL and paths
+        id: compute
+        env:
+          PREVIEW_BASE_URL: ${{ vars.PREVIEW_BASE_URL }}
+          REMOTE_BASE_PATH: ${{ vars.REMOTE_BASE_PATH }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          if [ -z "$PREVIEW_BASE_URL" ]; then
+            echo "::error::vars.PREVIEW_BASE_URL is not set." >&2
+            exit 1
+          fi
+          echo "url=${PREVIEW_BASE_URL%/}/pr-${PR_NUMBER}/" >> "$GITHUB_OUTPUT"
+          echo "remote_dir=${REMOTE_BASE_PATH%/}/pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+
+          # --base-href must be an absolute *path* ("/…/", not a full URL) —
+          # flutter build web rejects anything not starting and ending with
+          # "/", even though the resulting <base href> tag would happily
+          # accept an absolute URL. Derive it from PREVIEW_BASE_URL's own
+          # path component (e.g. "/club_office/"), which is empty when
+          # PREVIEW_BASE_URL is bare domain.
+          no_scheme="${PREVIEW_BASE_URL#*://}"
+          if [[ "$no_scheme" == */* ]]; then
+            base_path="/${no_scheme#*/}"
+          else
+            base_path="/"
+          fi
+          echo "base_href=${base_path%/}/pr-${PR_NUMBER}/" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: compute
+    uses: ./.github/workflows/reusable-sftp-deploy.yml
+    with:
+      action: sync
+      base_href: ${{ needs.compute.outputs.base_href }}
+      remote_dir: ${{ needs.compute.outputs.remote_dir }}
+    secrets:
+      ssh_host: ${{ secrets.SSH_HOST }}
+      ssh_port: ${{ secrets.SSH_PORT }}
+      ssh_username: ${{ secrets.SSH_USERNAME }}
+      ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      ssh_password: ${{ secrets.SSH_PASSWORD }}
+
+  comment:
+    needs: [compute, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment preview URL on PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-preview
+          message: |
+            ### 🚀 Preview deployed
+
+            ${{ needs.compute.outputs.url }}
+
+            Updated from ${{ github.sha }}.

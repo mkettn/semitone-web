@@ -1,0 +1,87 @@
+name: Deploy Main
+
+on:
+  push:
+    branches: [main]
+
+# Only the latest push to main matters; a stale in-flight deploy can be
+# dropped in favor of a newer one.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  compute:
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.compute.outputs.url }}
+      base_href: ${{ steps.compute.outputs.base_href }}
+      remote_dir: ${{ steps.compute.outputs.remote_dir }}
+    steps:
+      # Deploys to the *root* of REMOTE_BASE_PATH, the same host and base
+      # path that PR previews live under (as REMOTE_BASE_PATH/pr-<N>/) —
+      # see reusable-sftp-deploy.yml's exclude_regex input for how the two
+      # coexist.
+      - name: Compute base href and remote dir
+        id: compute
+        env:
+          PREVIEW_BASE_URL: ${{ vars.PREVIEW_BASE_URL }}
+          REMOTE_BASE_PATH: ${{ vars.REMOTE_BASE_PATH }}
+        run: |
+          if [ -z "$PREVIEW_BASE_URL" ]; then
+            echo "::error::vars.PREVIEW_BASE_URL is not set." >&2
+            exit 1
+          fi
+          echo "url=${PREVIEW_BASE_URL%/}/" >> "$GITHUB_OUTPUT"
+          echo "remote_dir=${REMOTE_BASE_PATH%/}" >> "$GITHUB_OUTPUT"
+
+          # --base-href must be an absolute *path* ("/…/", not a full URL) —
+          # flutter build web rejects anything not starting and ending with
+          # "/". Derive it from PREVIEW_BASE_URL's own path component (e.g.
+          # "/club_office/"), which is just "/" when PREVIEW_BASE_URL is a
+          # bare domain — same derivation pr-preview.yml uses, minus the
+          # "pr-<N>/" suffix since main deploys to the site root.
+          no_scheme="${PREVIEW_BASE_URL#*://}"
+          if [[ "$no_scheme" == */* ]]; then
+            base_path="/${no_scheme#*/}"
+          else
+            base_path="/"
+          fi
+          echo "base_href=${base_path%/}/" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: compute
+    uses: ./.github/workflows/reusable-sftp-deploy.yml
+    with:
+      action: sync
+      base_href: ${{ needs.compute.outputs.base_href }}
+      remote_dir: ${{ needs.compute.outputs.remote_dir }}
+      # Protects PR preview subfolders (remote_dir/pr-<N>/, deployed by
+      # pr-preview.yml) from this sync's --delete pass. Without it,
+      # mirroring the site root with --delete would treat every pr-<N>/
+      # directory as "not in the local build output" and wipe out every
+      # live preview on each push to main.
+      exclude_regex: ^pr-[0-9]+/
+    secrets:
+      ssh_host: ${{ secrets.SSH_HOST }}
+      ssh_port: ${{ secrets.SSH_PORT }}
+      ssh_username: ${{ secrets.SSH_USERNAME }}
+      ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      ssh_password: ${{ secrets.SSH_PASSWORD }}
+
+  summary:
+    needs: [compute, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record deploy summary
+        run: |
+          {
+            echo "### 🚀 Deployed to production"
+            echo ""
+            echo "${{ needs.compute.outputs.url }}"
+            echo ""
+            echo "Deployed from ${{ github.sha }}."
+          } >> "$GITHUB_STEP_SUMMARY"
