@@ -2,210 +2,158 @@ import 'package:flutter/material.dart';
 
 import '../models/scale_presets.dart';
 import '../models/tuning_scale.dart';
+import '../services/scale_io.dart';
 import '../services/settings_service.dart';
 import '../theme/semitone_theme.dart';
 import 'custom_scale_screen.dart';
 
-/// Lists all of the user's saved custom scales (e.g. "myscale1",
-/// "myscale2") and lets them switch which one the tuner uses, create new
-/// ones, duplicate, rename (via the editor), or delete them.
-class ScaleListScreen extends StatefulWidget {
+/// Lists every saved scale (built-in presets and the user's own), with
+/// buttons to create, copy, delete, export, or import scales — no popups,
+/// tapping a row opens its editor directly.
+class ScaleListScreen extends StatelessWidget {
   const ScaleListScreen({super.key, required this.settings});
 
   final SettingsService settings;
 
-  @override
-  State<ScaleListScreen> createState() => _ScaleListScreenState();
-}
-
-class _ScaleListScreenState extends State<ScaleListScreen> {
-  Future<void> _createScale() async {
-    final preset = await _promptForPreset(context);
-    if (preset == null) return;
-    if (!mounted) return;
-
-    final name = await _promptForName(
-      context,
-      title: 'New scale',
-      initial: preset.name == 'Chromatic'
-          ? 'My scale ${widget.settings.customScales.length + 1}'
-          : preset.name,
-    );
-    if (name == null || name.trim().isEmpty) return;
-
-    final scale = preset.build().copyWith(name: name.trim());
-    widget.settings.addScale(scale);
-    setState(() {});
-    if (!mounted) return;
-    await _openEditor(scale.id);
-  }
-
-  Future<ScalePreset?> _promptForPreset(BuildContext context) {
-    return showDialog<ScalePreset>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Start from'),
-        children: [
-          for (final preset in scalePresets)
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(context).pop(preset),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(preset.name),
-                    Text(
-                      preset.description,
-                      style: const TextStyle(
-                        color: SemitoneColors.grey4,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
+  Future<void> _openEditor(BuildContext context, String scaleId) {
+    return Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CustomScaleScreen(settings: settings, scaleId: scaleId),
       ),
     );
   }
 
-  Future<void> _duplicateScale(String id) async {
-    widget.settings.duplicateScale(id);
-    setState(() {});
+  Future<void> _createScale(BuildContext context) async {
+    final presets = await loadPresetScales();
+    final template = presets.firstWhere(
+      (s) => s.name == 'Chromatic',
+      orElse: TuningScale.empty,
+    );
+    final scale = template.copyWith(name: 'New scale ${settings.scales.length + 1}');
+    settings.addScale(scale);
+    if (context.mounted) await _openEditor(context, scale.id);
   }
 
-  Future<void> _deleteScale(TuningScale scale) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete scale?'),
-        content: Text('This will permanently delete "${scale.name}".'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      widget.settings.deleteScale(scale.id);
-      setState(() {});
+  Future<void> _copyScale(BuildContext context, TuningScale scale) async {
+    final copy = settings.duplicateScale(scale.id);
+    if (context.mounted) await _openEditor(context, copy.id);
+  }
+
+  void _deleteScale(BuildContext context, TuningScale scale) {
+    if (settings.scales.length <= 1) {
+      _showMessage(context, "Can't delete the last scale.");
+      return;
+    }
+    settings.deleteScale(scale.id);
+    _showMessage(context, 'Deleted "${scale.name}".');
+  }
+
+  Future<void> _exportScale(BuildContext context, TuningScale scale) async {
+    try {
+      await exportScale(scale);
+    } catch (e) {
+      if (context.mounted) _showMessage(context, 'Could not export: $e');
     }
   }
 
-  Future<void> _openEditor(String id) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CustomScaleScreen(settings: widget.settings, scaleId: id),
-      ),
-    );
-    setState(() {});
+  Future<void> _importScale(BuildContext context) async {
+    try {
+      final imported = await importScale();
+      if (imported == null) return; // user cancelled the picker
+      settings.addScale(imported);
+      if (context.mounted) _showMessage(context, 'Imported "${imported.name}".');
+    } on ScaleIoException catch (e) {
+      if (context.mounted) _showMessage(context, e.message);
+    }
   }
 
-  Future<String?> _promptForName(
-    BuildContext context, {
-    required String title,
-    String initial = '',
-  }) {
-    final controller = TextEditingController(text: initial);
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Scale name'),
-          onSubmitted: (v) => Navigator.of(context).pop(v),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
+  void _showMessage(BuildContext context, String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final scales = widget.settings.customScales;
-    final activeId = widget.settings.activeCustomScaleId ??
-        (scales.isNotEmpty ? scales.first.id : null);
+    return AnimatedBuilder(
+      animation: settings,
+      builder: (context, _) {
+        final scales = settings.scales;
+        final activeId = settings.activeScaleId ?? (scales.isNotEmpty ? scales.first.id : null);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Scales')),
-      body: scales.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'No custom scales yet.\nTap + to create one, starting from the default chromatic scale.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: SemitoneColors.grey4),
-                ),
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('My Scales'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.file_upload_outlined),
+                tooltip: 'Import a scale from file',
+                onPressed: () => _importScale(context),
               ),
-            )
-          : ListView.builder(
-              itemCount: scales.length,
-              itemBuilder: (context, index) {
-                final scale = scales[index];
-                final isActive = scale.id == activeId;
-                return ListTile(
-                  leading: IconButton(
-                    icon: Icon(
-                      isActive ? Icons.radio_button_checked : Icons.radio_button_off,
+            ],
+          ),
+          body: scales.isEmpty
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'No scales yet.\nTap + to create one.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: SemitoneColors.grey4),
                     ),
-                    color: isActive ? SemitoneColors.blue : SemitoneColors.grey4,
-                    tooltip: 'Use this scale',
-                    onPressed: () {
-                      widget.settings.activeCustomScaleId = scale.id;
-                      setState(() {});
-                    },
                   ),
-                  title: Text(scale.name),
-                  subtitle: Text(
-                    '${scale.degrees.length} tone heights'
-                    '${isActive ? ' • active' : ''}',
-                  ),
-                  onTap: () => _openEditor(scale.id),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.content_copy),
-                        color: SemitoneColors.grey4,
-                        tooltip: 'Duplicate scale',
-                        onPressed: () => _duplicateScale(scale.id),
+                )
+              : ListView.builder(
+                  itemCount: scales.length,
+                  itemBuilder: (context, index) {
+                    final scale = scales[index];
+                    final isActive = scale.id == activeId;
+                    return ListTile(
+                      leading: IconButton(
+                        icon: Icon(
+                          isActive ? Icons.radio_button_checked : Icons.radio_button_off,
+                        ),
+                        color: isActive ? SemitoneColors.blue : SemitoneColors.grey4,
+                        tooltip: 'Use this scale',
+                        onPressed: () => settings.activeScaleId = scale.id,
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        color: SemitoneColors.grey4,
-                        tooltip: 'Delete scale',
-                        onPressed: () => _deleteScale(scale),
+                      title: Text(scale.name),
+                      subtitle: Text(
+                        '${scale.degrees.length} tone heights'
+                        '${isActive ? ' • active' : ''}',
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createScale,
-        tooltip: 'Create a new scale',
-        child: const Icon(Icons.add),
-      ),
+                      onTap: () => _openEditor(context, scale.id),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.file_download_outlined),
+                            color: SemitoneColors.grey4,
+                            tooltip: 'Export scale',
+                            onPressed: () => _exportScale(context, scale),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.content_copy),
+                            color: SemitoneColors.grey4,
+                            tooltip: 'Copy scale',
+                            onPressed: () => _copyScale(context, scale),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            color: SemitoneColors.grey4,
+                            tooltip: 'Delete scale',
+                            onPressed: () => _deleteScale(context, scale),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _createScale(context),
+            tooltip: 'Create a new scale',
+            child: const Icon(Icons.add),
+          ),
+        );
+      },
     );
   }
 }

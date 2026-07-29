@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,6 +15,9 @@ void main() {
 
     expect(find.text('TUNER'), findsOneWidget);
     expect(find.text('METRONOME'), findsOneWidget);
-    expect(find.text('Semitone Web'), findsOneWidget);
+    // The app bar title is a scale-switcher dropdown, seeded active on the
+    // bundled "Chromatic" preset, rather than static "Semitone Web" text.
+    expect(find.byType(DropdownButton<String>), findsOneWidget);
+    expect(find.text('Chromatic'), findsOneWidget);
   });
 }

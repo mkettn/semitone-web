@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../services/settings_service.dart';
+import '../theme/semitone_theme.dart';
 import 'metronome_screen.dart';
+import 'scale_list_screen.dart';
 import 'settings_screen.dart';
 import 'tuner_screen.dart';
 
 /// Top-level tabbed screen (Tuner, Metronome) with a settings action,
 /// mirroring the original app's activity_main layout (TabLayout + pager +
-/// settings gear).
+/// settings gear). The title is a live dropdown for switching the tuner's
+/// active scale; a second action opens the full scale list to create,
+/// copy, delete, export, or import scales.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.settings});
 
@@ -19,7 +23,7 @@ class HomeScreen extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Semitone Web'),
+          title: _ScaleTitleDropdown(settings: settings),
           bottom: const TabBar(
             tabs: [
               Tab(text: 'TUNER'),
@@ -28,7 +32,19 @@ class HomeScreen extends StatelessWidget {
           ),
           actions: [
             IconButton(
+              icon: const Icon(Icons.tune),
+              tooltip: 'My scales',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ScaleListScreen(settings: settings),
+                  ),
+                );
+              },
+            ),
+            IconButton(
               icon: const Icon(Icons.settings),
+              tooltip: 'Settings',
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -46,6 +62,54 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Replaces the static "Semitone Web" app title with a dropdown for
+/// switching the tuner's active scale.
+class _ScaleTitleDropdown extends StatelessWidget {
+  const _ScaleTitleDropdown({required this.settings});
+
+  final SettingsService settings;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: settings,
+      builder: (context, _) {
+        final scales = settings.scales;
+        final active = settings.activeScale;
+        final value = (active != null && scales.any((s) => s.id == active.id))
+            ? active.id
+            : null;
+
+        if (scales.isEmpty) {
+          return const Text('Semitone Web');
+        }
+
+        return DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: value,
+            isExpanded: true,
+            hint: Text(active?.name ?? 'Semitone Web'),
+            dropdownColor: SemitoneColors.grey2,
+            iconEnabledColor: SemitoneColors.white,
+            style: const TextStyle(
+              color: SemitoneColors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+            ),
+            items: [
+              for (final scale in scales)
+                DropdownMenuItem(value: scale.id, child: Text(scale.name)),
+            ],
+            onChanged: (id) {
+              if (id != null) settings.activeScaleId = id;
+            },
+          ),
+        );
+      },
     );
   }
 }
