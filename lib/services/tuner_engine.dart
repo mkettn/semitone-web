@@ -31,7 +31,7 @@ class TunerEngine {
   final _controller = StreamController<PitchReading>.broadcast();
   late final PitchDetector _detector = PitchDetector(bufferSize);
 
-  final List<double> _history = List.filled(_histSize, 0);
+  final List<double> _history = List.filled(_histSize, 0, growable: true);
   int _concertA = 440;
 
   Stream<PitchReading> get readings => _controller.stream;
