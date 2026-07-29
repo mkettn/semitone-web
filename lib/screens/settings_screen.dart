@@ -58,7 +58,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const _SectionHeader('Global'),
               ListTile(
                 title: const Text('Concert pitch (A4)'),
-                subtitle: const Text('Reference frequency used by the tuner'),
+                subtitle: const Text(
+                  'Used by the standard chromatic scale. Custom scales set '
+                  'their own base frequency in their editor.',
+                ),
                 trailing: SizedBox(
                   width: 80,
                   child: TextField(

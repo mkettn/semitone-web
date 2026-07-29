@@ -40,9 +40,10 @@ TuningScale _byzantineGenus(String name, List<int> cumulativeMoria) {
 /// Starting points offered when creating a new scale: the default
 /// chromatic scale, and the four genera of Byzantine chant theory, rooted
 /// on Νη (Ni), the *vasi* (base note). Byzantine chant has no fixed
-/// concert pitch — set the tuner's concert pitch (Settings) to whatever
-/// frequency you want Νη to be, and every other degree is expressed
-/// relative to it, same as this app already does for every scale.
+/// concert pitch, so each preset starts with a placeholder 440 Hz base
+/// frequency (like every scale, editable in its own editor, independent
+/// of every other scale) — set it to whatever frequency you want Νη to
+/// be, and every other degree is expressed relative to it.
 List<ScalePreset> get scalePresets => [
       ScalePreset(
         name: 'Chromatic',

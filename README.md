@@ -13,7 +13,8 @@ piano (for now).
   original `CentErrorView`.
 - **Metronome** — adjustable BPM (20-300), beat indicator, synthesized
   click sounds (no bundled audio assets required).
-- **Settings** — concert pitch (A4, default 440 Hz), metronome "keep tick".
+- **Settings** — concert pitch (A4, default 440 Hz, used by the standard
+  chromatic scale), metronome "keep tick".
 - **Custom scale boundaries** *(new)* — define your own named tone heights
   (in cents within an octave) instead of standard 12-tone equal
   temperament, and have the tuner match detected pitches against them.
@@ -31,10 +32,14 @@ piano (for now).
     - one of the four genera of **Byzantine chant** theory (Modern
       Patriarchal Committee 72-moria system) — Diatonic, Soft Chromatic,
       Hard Chromatic, and Enharmonic — rooted on Νη (Ni), the *vasi*
-      (base note). Byzantine chant has no fixed concert pitch: set the
-      tuner's concert pitch (Settings → Global) to whatever frequency you
-      want Νη to be, and every other degree (Πα, Βου, Γα, Δι, Κε, Ζω) is
-      expressed relative to it.
+      (base note).
+
+  Each scale carries its **own base frequency** (in its editor, next to
+  its root octave), rather than sharing one global concert pitch — so
+  you can have several scales tuned to different references at once,
+  and scales with no fixed concert pitch at all (like Byzantine chant,
+  whose base note can be set to whatever the *vasi* happens to be) don't
+  need to borrow the standard scale's A4.
 
 ## Getting started
 

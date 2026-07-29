@@ -59,4 +59,24 @@ void main() {
     settings.useCustomScale = false;
     expect(settings.activeScale.name, '12-tone equal temperament');
   });
+
+  test('activeScale base frequency: global concertA for the default scale, '
+      'per-scale for custom scales', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = await SettingsService.create();
+
+    settings.concertA = 442;
+    expect(settings.activeScale.baseFrequency, 442);
+
+    final custom = TuningScale.defaultChromatic()
+        .copyWith(name: 'mine', baseFrequency: 256);
+    settings.addScale(custom);
+    settings.useCustomScale = true;
+    expect(settings.activeScale.baseFrequency, 256);
+
+    // Changing the global concert pitch doesn't affect the custom scale's
+    // own base frequency.
+    settings.concertA = 445;
+    expect(settings.activeScale.baseFrequency, 256);
+  });
 }

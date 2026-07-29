@@ -17,6 +17,12 @@ import '../widgets/scale_cake_chart.dart';
 /// A#, H — German naming, H = B), a tone can be duplicated ("copy") to
 /// split its wedge in two, and then repositioned to redraw where the
 /// octave gets split.
+///
+/// Each scale has its own base frequency (the pitch of its root tone,
+/// marked with a ★) rather than sharing one global concert pitch — useful
+/// both for having several scales tuned to different references, and for
+/// scales with no fixed concert pitch at all (e.g. Byzantine chant, whose
+/// base note can be set to whatever the *vasi* happens to be).
 class CustomScaleScreen extends StatefulWidget {
   const CustomScaleScreen({
     super.key,
@@ -38,6 +44,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   late TuningScale _scale;
   late TextEditingController _nameController;
   late TextEditingController _rootOctaveController;
+  late TextEditingController _baseFrequencyController;
   int? _selectedIndex;
 
   @override
@@ -50,12 +57,18 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
     _nameController = TextEditingController(text: _scale.name);
     _rootOctaveController =
         TextEditingController(text: _scale.rootOctave.toString());
+    _baseFrequencyController =
+        TextEditingController(text: _formatHz(_scale.baseFrequency));
   }
+
+  String _formatHz(double hz) =>
+      hz == hz.roundToDouble() ? hz.toStringAsFixed(0) : hz.toStringAsFixed(2);
 
   @override
   void dispose() {
     _nameController.dispose();
     _rootOctaveController.dispose();
+    _baseFrequencyController.dispose();
     super.dispose();
   }
 
@@ -153,19 +166,40 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
       body: ListView(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Scale name',
+                isDense: true,
+              ),
+              onChanged: (v) {
+                setState(() => _scale = _scale.copyWith(name: v));
+                _persist();
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _nameController,
+                    controller: _baseFrequencyController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
-                      labelText: 'Scale name',
+                      labelText: 'Base frequency',
+                      helperText: 'Pitch of the root tone (★ below)',
+                      suffixText: 'Hz',
                       isDense: true,
                     ),
                     onChanged: (v) {
-                      setState(() => _scale = _scale.copyWith(name: v));
-                      _persist();
+                      final parsed = double.tryParse(v);
+                      if (parsed != null && parsed > 0) {
+                        _scale = _scale.copyWith(baseFrequency: parsed);
+                        _persist();
+                      }
                     },
                   ),
                 ),

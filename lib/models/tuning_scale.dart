@@ -31,6 +31,7 @@ class TuningScale {
     required List<ScaleDegree> degrees,
     this.rootIndex = 0,
     this.rootOctave = 4,
+    this.baseFrequency = 440,
   })  : id = id ?? _generateId(),
         degrees = List.unmodifiable(
           [...degrees]..sort((a, b) => a.cents.compareTo(b.cents)),
@@ -50,20 +51,28 @@ class TuningScale {
   final List<ScaleDegree> degrees;
 
   /// Index (into the *sorted* [degrees]) of the degree that lines up with
-  /// the reference pitch (concert A) at [rootOctave].
+  /// [baseFrequency] at [rootOctave].
   final int rootIndex;
 
   /// Octave number assigned to [rootIndex] when the detected pitch exactly
-  /// matches the reference frequency.
+  /// matches [baseFrequency].
   final int rootOctave;
+
+  /// The pitch, in Hz, of the degree at [rootIndex]. Each scale carries its
+  /// own base pitch rather than sharing one global "concert pitch" — e.g.
+  /// standard 12-TET tracks the app's concert-A setting, but a scale with
+  /// no fixed concert pitch (such as a Byzantine chant genus, rooted on
+  /// whatever frequency the *vasi* happens to be) can be tuned
+  /// independently of it and of every other saved scale.
+  final double baseFrequency;
 
   static const List<String> _chromaticNames = [
     'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
   ];
 
   /// Standard 12-tone equal temperament, rooted so that "A" lines up with
-  /// the configured concert pitch (matches the original Semitone app).
-  factory TuningScale.defaultTwelveTet() {
+  /// [concertA] (matches the original Semitone app).
+  factory TuningScale.defaultTwelveTet({double concertA = 440}) {
     final degs = [
       for (var i = 0; i < 12; i++)
         ScaleDegree(name: _chromaticNames[i], cents: i * 100.0),
@@ -73,6 +82,7 @@ class TuningScale {
       degrees: degs,
       rootIndex: _chromaticNames.indexOf('A'),
       rootOctave: 4,
+      baseFrequency: concertA,
     );
   }
 
@@ -114,8 +124,16 @@ class TuningScale {
     });
   }
 
+  /// Match a detected fundamental frequency in Hz against this scale,
+  /// converting it to cents relative to [baseFrequency] and delegating to
+  /// [match].
+  ScaleMatch matchFrequency(double freq) {
+    final totalCents = 1200 * (math.log(freq / baseFrequency) / math.ln2);
+    return match(totalCents);
+  }
+
   /// Match a detected [totalCentsFromReference] (i.e.
-  /// `1200 * log2(freq / referenceFreq)`) against this scale, returning the
+  /// `1200 * log2(freq / baseFrequency)`) against this scale, returning the
   /// nearest degree, its octave, and signed error in cents.
   ScaleMatch match(double totalCentsFromReference) {
     if (degrees.isEmpty) {
@@ -155,6 +173,7 @@ class TuningScale {
     List<ScaleDegree>? degrees,
     int? rootIndex,
     int? rootOctave,
+    double? baseFrequency,
   }) {
     return TuningScale(
       id: id,
@@ -162,6 +181,7 @@ class TuningScale {
       degrees: degrees ?? this.degrees,
       rootIndex: rootIndex ?? this.rootIndex,
       rootOctave: rootOctave ?? this.rootOctave,
+      baseFrequency: baseFrequency ?? this.baseFrequency,
     );
   }
 
@@ -173,6 +193,7 @@ class TuningScale {
       degrees: degrees,
       rootIndex: rootIndex,
       rootOctave: rootOctave,
+      baseFrequency: baseFrequency,
     );
   }
 
@@ -182,6 +203,7 @@ class TuningScale {
         'degrees': degrees.map((d) => d.toJson()).toList(),
         'rootIndex': rootIndex,
         'rootOctave': rootOctave,
+        'baseFrequency': baseFrequency,
       };
 
   factory TuningScale.fromJson(Map<String, dynamic> json) {
@@ -200,6 +222,7 @@ class TuningScale {
       degrees: degs,
       rootIndex: rootIndex,
       rootOctave: json['rootOctave'] as int? ?? 4,
+      baseFrequency: (json['baseFrequency'] as num?)?.toDouble() ?? 440,
     );
   }
 

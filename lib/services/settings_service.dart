@@ -143,13 +143,14 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The scale actually used by the tuner: the active custom scale when
-  /// enabled and non-empty, otherwise standard 12-tone equal temperament.
+  /// The scale actually used by the tuner: the active custom scale (with
+  /// its own base frequency) when enabled and non-empty, otherwise standard
+  /// 12-tone equal temperament rooted at [concertA].
   TuningScale get activeScale {
     final active = activeCustomScale;
     if (useCustomScale && active != null && active.degrees.isNotEmpty) {
       return active;
     }
-    return TuningScale.defaultTwelveTet();
+    return TuningScale.defaultTwelveTet(concertA: concertA.toDouble());
   }
 }

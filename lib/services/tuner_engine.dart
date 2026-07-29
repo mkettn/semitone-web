@@ -8,13 +8,12 @@ import '../dsp/pitch_detector.dart';
 
 /// Result of one pitch-detection cycle.
 class PitchReading {
-  const PitchReading({required this.frequency, required this.semitone});
+  const PitchReading({required this.frequency});
 
-  /// Estimated fundamental frequency in Hz.
+  /// Smoothed estimate of the fundamental frequency, in Hz. Interpreting
+  /// this against any particular scale (which note it is, how many cents
+  /// off) is the caller's job, via that scale's own base frequency.
   final double frequency;
-
-  /// Smoothed `12 * log2(frequency / concertA)`.
-  final double semitone;
 }
 
 /// Captures microphone audio and streams pitch estimates, replicating the
@@ -32,7 +31,12 @@ class TunerEngine {
   late final PitchDetector _detector = PitchDetector(bufferSize);
 
   final List<double> _history = List.filled(_histSize, 0, growable: true);
-  int _concertA = 440;
+
+  // Purely an internal anchor for smoothing in log-frequency (semitone)
+  // space, which behaves consistently across registers unlike smoothing
+  // raw Hz values directly. Not user-facing and unrelated to any scale's
+  // own base frequency - converted back to Hz before reaching listeners.
+  static const _smoothingAnchor = 440.0;
 
   // The sample rate actually delivered by the platform can differ from the
   // one requested in RecordConfig — notably on web, where the browser's
@@ -47,8 +51,6 @@ class TunerEngine {
   static const _calibrationMinMs = 500;
 
   Stream<PitchReading> get readings => _controller.stream;
-
-  set concertA(int value) => _concertA = value;
 
   Future<bool> hasPermission() => _recorder.hasPermission();
 
@@ -113,14 +115,16 @@ class TunerEngine {
       final freq = _detector.frequency(samples, _effectiveSampleRate);
       if (freq == null || freq.isNaN || freq <= 0) return;
 
-      final semitone = 12 * (math.log(freq / _concertA) / math.ln2);
+      final semitone = 12 * (math.log(freq / _smoothingAnchor) / math.ln2);
       _history.removeAt(0);
       _history.add(semitone);
       final sorted = [..._history]..sort();
       final median =
           (sorted[_histSize ~/ 2 - 1] + sorted[_histSize ~/ 2]) / 2;
+      final smoothedFreq =
+          (_smoothingAnchor * math.pow(2, median / 12)).toDouble();
 
-      _controller.add(PitchReading(frequency: freq, semitone: median));
+      _controller.add(PitchReading(frequency: smoothedFreq));
     });
   }
 
