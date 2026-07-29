@@ -25,53 +25,22 @@ jobs:
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
     steps:
+      # Needed for scripts/*.sh below — this job otherwise touches nothing
+      # in the working tree.
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Install lftp
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y lftp
+        run: scripts/setup-sftp.sh
 
       - name: Configure SFTP auth
         id: ssh_auth
-        run: |
-          PORT="${SSH_PORT:-22}"
-          echo "port=${PORT}" >> "$GITHUB_OUTPUT"
-
-          # -l $SSH_USERNAME is required here even though `open` below also
-          # embeds the username in its sftp:// URL: lftp's sftp:connect-program
-          # invokes this command with only host/port, never the username from
-          # that URL — omitting -l silently authenticates as the local
-          # runner's own OS user ("runner" on GitHub-hosted runners) instead,
-          # which the remote sshd logs as "Invalid user runner" and often
-          # just hangs on rather than rejecting outright.
-          #
-          # ConnectTimeout guards against a silent network-level hang (e.g. a
-          # firewall dropping packets instead of rejecting the connection).
-          if [ -n "$SSH_PRIVATE_KEY" ]; then
-            KEY_PATH="${RUNNER_TEMP}/deploy_key"
-            printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY_PATH"
-            chmod 600 "$KEY_PATH"
-            # BatchMode=yes: never prompt (passphrase, unknown host, etc.) —
-            # fail fast with a clear error instead of hanging forever. If
-            # this starts failing, the key most likely has a passphrase;
-            # CI deploy keys must be passphrase-less.
-            echo "connect_program=ssh -l ${SSH_USERNAME} -i ${KEY_PATH} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15" >> "$GITHUB_OUTPUT"
-          elif [ -n "$SSH_PASSWORD" ]; then
-            sudo apt-get install -y sshpass
-            echo "SSHPASS=${SSH_PASSWORD}" >> "$GITHUB_ENV"
-            # PreferredAuthentications=password (+ disabling pubkey) forces
-            # the classic "Password:" prompt sshpass actually answers —
-            # without it, a server offering keyboard-interactive first can
-            # leave sshpass waiting on a prompt it never recognizes.
-            echo "connect_program=sshpass -e ssh -l ${SSH_USERNAME} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=15" >> "$GITHUB_OUTPUT"
-          else
-            echo "::error::Set either the SSH_PRIVATE_KEY or SSH_PASSWORD secret." >&2
-            exit 1
-          fi
+        run: scripts/config-sftp.sh
 
       - name: Remove PR preview folder
-        # Belt-and-suspenders alongside BatchMode/ConnectTimeout above: fail
-        # within minutes instead of eating the whole job's multi-hour cap if
-        # something still manages to hang.
+        # Belt-and-suspenders alongside BatchMode/ConnectTimeout in
+        # config-sftp.sh: fail within minutes instead of eating the whole
+        # job's multi-hour cap if something still manages to hang.
         timeout-minutes: 5
         env:
           CONNECT_PROGRAM: ${{ steps.ssh_auth.outputs.connect_program }}
