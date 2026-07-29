@@ -37,7 +37,7 @@ class _TunerScreenState extends State<TunerScreen> {
   }
 
   void _onReading(PitchReading reading) {
-    final scale = widget.settings.activeScale ?? TuningScale.defaultChromatic();
+    final scale = widget.settings.activeScale ?? TuningScale.empty();
     final match = scale.matchFrequency(reading.frequency);
     if (mounted) setState(() => _match = match);
   }

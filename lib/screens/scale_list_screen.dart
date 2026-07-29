@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/scale_presets.dart';
 import '../models/tuning_scale.dart';
 import '../services/scale_io.dart';
 import '../services/settings_service.dart';
@@ -23,8 +24,12 @@ class ScaleListScreen extends StatelessWidget {
   }
 
   Future<void> _createScale(BuildContext context) async {
-    final scale = TuningScale.defaultChromatic()
-        .copyWith(name: 'New scale ${settings.scales.length + 1}');
+    final presets = await loadPresetScales();
+    final template = presets.firstWhere(
+      (s) => s.name == 'Chromatic',
+      orElse: TuningScale.empty,
+    );
+    final scale = template.copyWith(name: 'New scale ${settings.scales.length + 1}');
     settings.addScale(scale);
     if (context.mounted) await _openEditor(context, scale.id);
   }

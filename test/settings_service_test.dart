@@ -1,9 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:semitone_web/models/scale_degree.dart';
 import 'package:semitone_web/models/scale_presets.dart';
 import 'package:semitone_web/models/tuning_scale.dart';
 import 'package:semitone_web/services/settings_service.dart';
+
+/// A minimal scale fixture for tests that don't care about actual note
+/// content, just that a distinct TuningScale instance with a given name
+/// exists.
+TuningScale _fixture(String name) {
+  return TuningScale(
+    name: name,
+    degrees: const [ScaleDegree(name: 'X', cents: 0)],
+  );
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -22,8 +33,8 @@ void main() {
     final settings = await SettingsService.create();
     final seededCount = settings.scales.length;
 
-    final scale1 = TuningScale.defaultChromatic().copyWith(name: 'myscale1');
-    final scale2 = TuningScale.defaultChromatic().copyWith(name: 'myscale2');
+    final scale1 = _fixture('myscale1');
+    final scale2 = _fixture('myscale2');
     settings.addScale(scale1);
     settings.addScale(scale2);
 
@@ -57,19 +68,6 @@ void main() {
     settings.deleteScale(last.id);
     expect(settings.scales, hasLength(1));
     expect(settings.scales.single.id, last.id);
-  });
-
-  test('migrates a legacy single custom_scale entry into the new list, no reseeding', () async {
-    final legacy = TuningScale.defaultChromatic().copyWith(name: 'old scale');
-    SharedPreferences.setMockInitialValues({
-      'custom_scale': legacy.toJsonString(),
-    });
-
-    final settings = await SettingsService.create();
-
-    expect(settings.scales, hasLength(1));
-    expect(settings.scales.single.name, 'old scale');
-    expect(settings.activeScale?.name, 'old scale');
   });
 
   test('activeScale falls back to the first saved scale if the active id is stale', () async {

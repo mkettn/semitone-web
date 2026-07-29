@@ -24,7 +24,8 @@ class ScaleMatch {
 /// interpret a detected pitch. Every scale the tuner can use — standard
 /// chromatic, a Byzantine chant genus, or a user's own — is one of these;
 /// there's no separate "default" kind, only which scales happen to be
-/// saved (see [ScalePreset] for the ones offered out of the box).
+/// saved (see `assets/scales/` and `loadPresetScales()` for the ones
+/// offered out of the box).
 class TuningScale {
   TuningScale({
     String? id,
@@ -67,28 +68,12 @@ class TuningScale {
   /// independently of it and of every other saved scale.
   final double baseFrequency;
 
-  static const List<String> _defaultScaleNames = [
-    'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'H',
-  ];
-
-  /// The default starting point for a new user-defined scale: the full
-  /// chromatic scale using German note naming (C, C#, D, ... A, A#, H,
-  /// where H = B), at standard 12-tone-equal-temperament positions —
-  /// including the sharps, not just the C-D-E-F-G-A-H natural notes.
-  /// Renders as 12 equal wedges of the cake, inviting the user to
-  /// reshape, rename, remove, or duplicate them.
-  factory TuningScale.defaultChromatic() {
-    final degs = [
-      for (var i = 0; i < _defaultScaleNames.length; i++)
-        ScaleDegree(name: _defaultScaleNames[i], cents: i * 100.0),
-    ];
-    return TuningScale(
-      name: 'My scale',
-      degrees: degs,
-      rootIndex: _defaultScaleNames.indexOf('A'),
-      rootOctave: 4,
-    );
-  }
+  /// A content-free placeholder (no degrees) for defensive fallbacks —
+  /// e.g. a hot path that needs *some* scale instance before an async
+  /// load of the real ones has resolved. [match] and [matchFrequency]
+  /// handle empty [degrees] gracefully, returning a "?" match rather than
+  /// throwing.
+  factory TuningScale.empty() => TuningScale(name: '', degrees: const []);
 
   /// The lower boundary (start angle, in cents) of each degree's slice,
   /// i.e. the midpoint between it and its previous neighbour — the same

@@ -1,20 +1,25 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:semitone_web/models/scale_degree.dart';
 import 'package:semitone_web/models/tuning_scale.dart';
 
-void main() {
-  test('defaultChromatic has all 12 semitones, named with H instead of B', () {
-    final scale = TuningScale.defaultChromatic();
-    expect(scale.degrees.map((d) => d.name).toList(), [
-      'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'H',
-    ]);
-    expect(scale.degrees.map((d) => d.cents).toList(),
-        [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100]);
-    expect(scale.degrees[scale.rootIndex].name, 'A');
-  });
+/// A 12-tone chromatic fixture for exercising generic TuningScale
+/// behaviour in isolation from the app's actual assets/scales/*.json
+/// presets (see scale_presets_test.dart for those).
+TuningScale _chromaticFixture({double baseFrequency = 440}) {
+  const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'H'];
+  return TuningScale(
+    name: 'Chromatic fixture',
+    degrees: [for (var i = 0; i < names.length; i++) ScaleDegree(name: names[i], cents: i * 100.0)],
+    rootIndex: names.indexOf('A'),
+    rootOctave: 4,
+    baseFrequency: baseFrequency,
+  );
+}
 
+void main() {
   test('sliceBoundaries partitions the octave into contiguous wedges', () {
-    final scale = TuningScale.defaultChromatic();
+    final scale = _chromaticFixture();
     final boundaries = scale.sliceBoundaries;
     expect(boundaries.length, scale.degrees.length);
     // Each boundary should be the midpoint with the previous neighbour.
@@ -24,7 +29,7 @@ void main() {
   });
 
   test('match finds the exact degree for its own reference cents', () {
-    final scale = TuningScale.defaultChromatic();
+    final scale = _chromaticFixture();
     // A is the root at octave 4 by default, so 0 cents from reference -> A4.
     final match = scale.match(0);
     expect(match.degreeName, 'A');
@@ -33,7 +38,7 @@ void main() {
   });
 
   test('duplicating a slice keeps the octave fully covered', () {
-    final scale = TuningScale.defaultChromatic();
+    final scale = _chromaticFixture();
     final boundaries = scale.sliceBoundaries;
     final total = List.generate(scale.degrees.length, (i) {
       final start = boundaries[i];
@@ -44,9 +49,9 @@ void main() {
   });
 
   test('each scale carries its own base frequency, defaulting to 440', () {
-    expect(TuningScale.defaultChromatic().baseFrequency, 440);
+    expect(TuningScale.empty().baseFrequency, 440);
 
-    final custom = TuningScale.defaultChromatic().copyWith(baseFrequency: 256);
+    final custom = _chromaticFixture(baseFrequency: 256);
     expect(custom.baseFrequency, 256);
     // copyWith without touching baseFrequency preserves it.
     expect(custom.copyWith(name: 'renamed').baseFrequency, 256);
@@ -55,8 +60,8 @@ void main() {
   });
 
   test('matchFrequency interprets a frequency relative to the scale\'s own base', () {
-    final scaleAt440 = TuningScale.defaultChromatic().copyWith(baseFrequency: 440);
-    final scaleAt256 = TuningScale.defaultChromatic().copyWith(baseFrequency: 256);
+    final scaleAt440 = _chromaticFixture(baseFrequency: 440);
+    final scaleAt256 = _chromaticFixture(baseFrequency: 256);
 
     // Same absolute frequency, different scales -> different results, because
     // each scale's root sits at its own base frequency.
@@ -74,8 +79,15 @@ void main() {
   });
 
   test('round-trips baseFrequency through JSON', () {
-    final scale = TuningScale.defaultChromatic().copyWith(baseFrequency: 261.63);
+    final scale = _chromaticFixture(baseFrequency: 261.63);
     final restored = TuningScale.fromJsonString(scale.toJsonString());
     expect(restored.baseFrequency, 261.63);
+  });
+
+  test('empty() has no degrees and matches as "?"', () {
+    final scale = TuningScale.empty();
+    expect(scale.degrees, isEmpty);
+    final match = scale.matchFrequency(440);
+    expect(match.degreeName, '?');
   });
 }

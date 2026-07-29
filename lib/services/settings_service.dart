@@ -17,37 +17,19 @@ class SettingsService extends ChangeNotifier {
   static const _keyKeepTick = 'keeptick';
   static const _keyScales = 'custom_scales';
   static const _keyActiveScaleId = 'active_custom_scale_id';
-  static const _keyLegacyCustomScale = 'custom_scale';
 
   final SharedPreferences _prefs;
 
   static Future<SettingsService> create() async {
     final prefs = await SharedPreferences.getInstance();
     final settings = SettingsService._(prefs);
-    settings._migrateLegacySingleScale();
     await settings._seedDefaultScalesIfEmpty();
     return settings;
   }
 
-  /// One-time migration from the single-scale storage format that
-  /// predates saving multiple scales.
-  void _migrateLegacySingleScale() {
-    final legacyRaw = _prefs.getString(_keyLegacyCustomScale);
-    if (legacyRaw == null || _prefs.containsKey(_keyScales)) return;
-    try {
-      final legacy = TuningScale.fromJsonString(legacyRaw);
-      _writeScales([legacy]);
-      _prefs.setString(_keyActiveScaleId, legacy.id);
-    } catch (_) {
-      // Corrupt legacy data: fall through to the normal seeding below.
-    } finally {
-      _prefs.remove(_keyLegacyCustomScale);
-    }
-  }
-
-  /// First run (or the legacy migration above found nothing usable):
-  /// seed the scale list with every bundled preset, active on the first
-  /// one (Chromatic, by filename order — see [loadPresetScales]).
+  /// First run: seed the scale list with every bundled preset, active on
+  /// the first one (Chromatic, by filename order — see
+  /// [loadPresetScales]).
   Future<void> _seedDefaultScalesIfEmpty() async {
     if (_prefs.getStringList(_keyScales)?.isNotEmpty ?? false) return;
     final seeded = await loadPresetScales();
@@ -102,7 +84,8 @@ class SettingsService extends ChangeNotifier {
   /// scale, or the first saved one if none (or a stale one) is selected.
   /// Only null if [scales] is somehow empty — shouldn't happen once
   /// seeded, but callers that need a guaranteed instance should fall back
-  /// to `TuningScale.defaultChromatic()`.
+  /// to an empty placeholder scale (see [TuningScale.match] for how an
+  /// empty scale is handled).
   TuningScale? get activeScale {
     final all = scales;
     if (all.isEmpty) return null;
