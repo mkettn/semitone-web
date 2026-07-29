@@ -17,9 +17,17 @@ import '../widgets/scale_cake_chart.dart';
 /// B) diatonic scale, a tone can be duplicated ("copy") to split its wedge
 /// in two, and then repositioned to redraw where the octave gets split.
 class CustomScaleScreen extends StatefulWidget {
-  const CustomScaleScreen({super.key, required this.settings});
+  const CustomScaleScreen({
+    super.key,
+    required this.settings,
+    required this.scaleId,
+  });
 
   final SettingsService settings;
+
+  /// Id of the saved scale (from [SettingsService.customScales]) being
+  /// edited.
+  final String scaleId;
 
   @override
   State<CustomScaleScreen> createState() => _CustomScaleScreenState();
@@ -34,7 +42,10 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   @override
   void initState() {
     super.initState();
-    _scale = widget.settings.customScale;
+    _scale = widget.settings.customScales.firstWhere(
+      (s) => s.id == widget.scaleId,
+      orElse: TuningScale.defaultDiatonic,
+    );
     _nameController = TextEditingController(text: _scale.name);
     _rootOctaveController =
         TextEditingController(text: _scale.rootOctave.toString());
@@ -48,7 +59,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   }
 
   void _persist() {
-    widget.settings.customScale = _scale;
+    widget.settings.updateScale(_scale);
   }
 
   void _addDegree() {
@@ -129,7 +140,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Custom Scale Boundaries'),
+        title: Text(_scale.name.isEmpty ? 'Edit scale' : _scale.name),
         actions: [
           IconButton(
             icon: const Icon(Icons.restart_alt),
@@ -152,7 +163,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
                       isDense: true,
                     ),
                     onChanged: (v) {
-                      _scale = _scale.copyWith(name: v);
+                      setState(() => _scale = _scale.copyWith(name: v));
                       _persist();
                     },
                   ),

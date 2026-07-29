@@ -26,13 +26,23 @@ class ScaleMatch {
 /// support custom / microtonal scales.
 class TuningScale {
   TuningScale({
+    String? id,
     required this.name,
     required List<ScaleDegree> degrees,
     this.rootIndex = 0,
     this.rootOctave = 4,
-  }) : degrees = List.unmodifiable(
+  })  : id = id ?? _generateId(),
+        degrees = List.unmodifiable(
           [...degrees]..sort((a, b) => a.cents.compareTo(b.cents)),
         );
+
+  /// Stable identity used to select/store/update this scale independently
+  /// of its (user-editable, possibly duplicated) name.
+  final String id;
+
+  static int _idCounter = 0;
+  static String _generateId() =>
+      '${DateTime.now().microsecondsSinceEpoch}-${_idCounter++}';
 
   final String name;
 
@@ -145,6 +155,7 @@ class TuningScale {
     int? rootOctave,
   }) {
     return TuningScale(
+      id: id,
       name: name ?? this.name,
       degrees: degrees ?? this.degrees,
       rootIndex: rootIndex ?? this.rootIndex,
@@ -152,7 +163,19 @@ class TuningScale {
     );
   }
 
+  /// A copy with a fresh [id], for duplicating a whole scale (as opposed to
+  /// [copyWith], which preserves identity for in-place edits).
+  TuningScale duplicate({String? name}) {
+    return TuningScale(
+      name: name ?? '${this.name} (copy)',
+      degrees: degrees,
+      rootIndex: rootIndex,
+      rootOctave: rootOctave,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
+        'id': id,
         'name': name,
         'degrees': degrees.map((d) => d.toJson()).toList(),
         'rootIndex': rootIndex,
@@ -170,6 +193,7 @@ class TuningScale {
       rootIndex = math.max(0, math.min(rootIndex, degs.length - 1));
     }
     return TuningScale(
+      id: json['id'] as String?,
       name: json['name'] as String? ?? 'Custom scale',
       degrees: degs,
       rootIndex: rootIndex,
