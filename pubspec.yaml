@@ -1,5 +1,5 @@
 name: semitone_web
-description: "A new Flutter project."
+description: "A pitch-perfect tuner for any tuning system, from equal temperament to Byzantine microtonal scales, with support for your own custom scales."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

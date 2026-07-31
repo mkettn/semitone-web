@@ -1,8 +1,8 @@
 {
   "name": "Byzantine — Hard chromatic",
-  "rootIndex": 0,
+  "rootIndex": 5,
   "rootOctave": 4,
-  "baseFrequency": 440,
+  "baseFrequency": 432,
   "degrees": [
     {"name": "Νη", "cents": 0},
     {"name": "Πα", "cents": 100},
