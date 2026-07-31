@@ -8,8 +8,9 @@ import '../theme/semitone_theme.dart';
 import 'custom_scale_screen.dart';
 
 /// Lists every saved scale (built-in presets and the user's own), with
-/// buttons to create, copy, delete, export, or import scales — no popups,
-/// tapping a row opens its editor directly.
+/// buttons to create, edit, copy, delete, export, or import scales — no
+/// popups. Picking which scale is *active* happens from the main
+/// screen's dropdown, not here.
 class ScaleListScreen extends StatelessWidget {
   const ScaleListScreen({super.key, required this.settings});
 
@@ -107,14 +108,6 @@ class ScaleListScreen extends StatelessWidget {
                     final scale = scales[index];
                     final isActive = scale.id == activeId;
                     return ListTile(
-                      leading: IconButton(
-                        icon: Icon(
-                          isActive ? Icons.radio_button_checked : Icons.radio_button_off,
-                        ),
-                        color: isActive ? SemitoneColors.blue : SemitoneColors.grey4,
-                        tooltip: 'Use this scale',
-                        onPressed: () => settings.activeScaleId = scale.id,
-                      ),
                       title: Text(scale.name),
                       subtitle: Text(
                         '${scale.degrees.length} tone heights'
@@ -124,6 +117,12 @@ class ScaleListScreen extends StatelessWidget {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined),
+                            color: SemitoneColors.grey4,
+                            tooltip: 'Edit scale',
+                            onPressed: () => _openEditor(context, scale.id),
+                          ),
                           IconButton(
                             icon: const Icon(Icons.file_download_outlined),
                             color: SemitoneColors.grey4,

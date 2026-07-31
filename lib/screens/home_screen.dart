@@ -3,15 +3,14 @@ import 'package:flutter/material.dart';
 import '../services/settings_service.dart';
 import '../theme/semitone_theme.dart';
 import 'metronome_screen.dart';
-import 'scale_list_screen.dart';
 import 'settings_screen.dart';
 import 'tuner_screen.dart';
 
 /// Top-level tabbed screen (Tuner, Metronome) with a settings action,
 /// mirroring the original app's activity_main layout (TabLayout + pager +
 /// settings gear). The title is a live dropdown for switching the tuner's
-/// active scale; a second action opens the full scale list to create,
-/// copy, delete, export, or import scales.
+/// active scale; creating/editing/deleting/exporting/importing scales
+/// lives under Settings -> My scales.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.settings});
 
@@ -31,17 +30,6 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.tune),
-              tooltip: 'My scales',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ScaleListScreen(settings: settings),
-                  ),
-                );
-              },
-            ),
             IconButton(
               icon: const Icon(Icons.settings),
               tooltip: 'Settings',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/settings_service.dart';
 import '../theme/semitone_theme.dart';
+import 'scale_list_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.settings});
@@ -17,6 +18,19 @@ class SettingsScreen extends StatelessWidget {
           appBar: AppBar(title: const Text('Settings')),
           body: ListView(
             children: [
+              const _SectionHeader('Scales'),
+              ListTile(
+                title: const Text('My scales'),
+                subtitle: Text('${settings.scales.length} saved'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ScaleListScreen(settings: settings),
+                    ),
+                  );
+                },
+              ),
               const _SectionHeader('Metronome'),
               SwitchListTile(
                 title: const Text('Keep tick'),
@@ -29,7 +43,7 @@ class SettingsScreen extends StatelessWidget {
                 title: Text('Semitone Web'),
                 subtitle: Text(
                   'A Flutter tuner & metronome, in the spirit of the '
-                  'original Semitone app. Manage scales from the tuner tab.',
+                  'original Semitone app.',
                 ),
               ),
             ],

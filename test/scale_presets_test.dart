@@ -37,11 +37,12 @@ void main() {
     expectCents('Byzantine — Enharmonic', [0, 200, 400, 500, 700, 900, 1100]);
   });
 
-  test('every Byzantine genus is rooted on Νη, the base note, at 0 cents', () async {
+  test('every scale\'s rootIndex matches its own reference cents exactly', () async {
     final scales = await loadPresetScales();
-    for (final scale in scales.where((s) => s.name.startsWith('Byzantine'))) {
-      expect(scale.degrees[scale.rootIndex].name, 'Νη');
-      expect(scale.degrees[scale.rootIndex].cents, 0);
+    for (final scale in scales) {
+      final match = scale.match(0);
+      expect(match.degreeName, scale.degrees[scale.rootIndex].name, reason: scale.name);
+      expect(match.errorCents, closeTo(0, 1e-6), reason: scale.name);
     }
   });
 
