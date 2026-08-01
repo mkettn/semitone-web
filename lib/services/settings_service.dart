@@ -130,4 +130,17 @@ class SettingsService extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  /// Discards every saved scale — including the user's own — and reloads
+  /// the bundled presets from scratch, active on the first one.
+  Future<void> resetToDefaults() async {
+    final defaults = await loadPresetScales();
+    _writeScales(defaults);
+    if (defaults.isNotEmpty) {
+      _prefs.setString(_keyActiveScaleId, defaults.first.id);
+    } else {
+      _prefs.remove(_keyActiveScaleId);
+    }
+    notifyListeners();
+  }
 }
