@@ -78,4 +78,20 @@ void main() {
     expect(settings.activeScale, isNotNull);
     expect(settings.activeScale!.id, settings.scales.first.id);
   });
+
+  test('resetToDefaults discards user scales and reloads the bundled presets', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = await SettingsService.create();
+    final presets = await loadPresetScales();
+
+    settings.addScale(_fixture('my custom scale'));
+    settings.deleteScale(settings.scales.first.id);
+    expect(settings.scales.map((s) => s.name), isNot(presets.map((p) => p.name)));
+
+    await settings.resetToDefaults();
+
+    expect(settings.scales.map((s) => s.name), presets.map((p) => p.name));
+    expect(settings.scales.any((s) => s.name == 'my custom scale'), isFalse);
+    expect(settings.activeScale?.name, 'Chromatic');
+  });
 }

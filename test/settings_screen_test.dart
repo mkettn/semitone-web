@@ -50,6 +50,14 @@ void main() {
       await tester.scrollUntilVisible(find.text('Keep tick'), 300, scrollable: scrollableFinder);
       expect(tester.takeException(), isNull);
       expect(find.text('Keep tick'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.text('Reset settings to defaults'),
+        300,
+        scrollable: scrollableFinder,
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('Reset settings to defaults'), findsOneWidget);
     },
   );
 }

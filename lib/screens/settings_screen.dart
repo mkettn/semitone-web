@@ -73,6 +73,32 @@ class SettingsScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
+  Future<void> _resetToDefaults(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset settings?'),
+        content: const Text(
+          'This replaces every saved scale — including your own — with '
+          'the bundled presets. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await settings.resetToDefaults();
+    if (context.mounted) _showMessage(context, 'Settings reset to defaults.');
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -162,6 +188,14 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: Text(
                   'A Flutter tuner & metronome, in the spirit of the '
                   'original Semitone app.',
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: OutlinedButton.icon(
+                  onPressed: () => _resetToDefaults(context),
+                  icon: const Icon(Icons.restore),
+                  label: const Text('Reset settings to defaults'),
                 ),
               ),
             ],
