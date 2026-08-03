@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:semitone_web/l10n/app_localizations.dart';
 import 'package:semitone_web/models/tuning_scale.dart';
 import 'package:semitone_web/screens/settings_screen.dart';
 import 'package:semitone_web/services/settings_service.dart';
@@ -19,7 +20,11 @@ void main() {
       }
 
       await tester.pumpWidget(
-        MaterialApp(home: SettingsScreen(settings: settings)),
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsScreen(settings: settings),
+        ),
       );
       await tester.pump();
 
@@ -58,6 +63,41 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       expect(find.text('Reset settings to defaults'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'picking a language from the dropdown updates settings.locale',
+    (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = await SettingsService.create();
+      expect(settings.locale, isNull); // starts on "System default".
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsScreen(settings: settings),
+        ),
+      );
+      await tester.pump();
+
+      await tester.scrollUntilVisible(
+        find.byType(DropdownButton<String?>),
+        300,
+        scrollable: find.byType(Scrollable),
+      );
+
+      // Invoke the dropdown's onChanged directly rather than opening its
+      // overlay menu: the same production code either way triggers, and
+      // it avoids driving the menu route's overlay animation in a test.
+      final dropdown = tester.widget<DropdownButton<String?>>(
+        find.byType(DropdownButton<String?>),
+      );
+      dropdown.onChanged!('de');
+      await tester.pump();
+
+      expect(settings.locale, const Locale('de'));
     },
   );
 }

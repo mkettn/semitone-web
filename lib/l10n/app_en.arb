@@ -1,0 +1,98 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Semitone Web",
+  "@appTitle": {"description": "The app's name, shown as a fallback title and in the About section."},
+
+  "tabTuner": "TUNER",
+  "tabMetronome": "METRONOME",
+
+  "settingsTooltip": "Settings",
+
+  "micPermissionPrompt": "Tap to grant microphone permission",
+  "noAudioDevice": "No audio input device is available on this system.",
+
+  "bpmLabel": "BPM",
+
+  "settingsTitle": "Settings",
+  "scalesSectionHeader": "Scales",
+  "importScaleTooltip": "Import a scale from file",
+  "noScalesYet": "No scales yet.",
+  "toneHeightsCount": "{count, plural, one{{count} tone height} other{{count} tone heights}}",
+  "@toneHeightsCount": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "activeScaleSuffix": " • active",
+  "editScaleTooltip": "Edit scale",
+  "exportScaleTooltip": "Export scale",
+  "copyScaleTooltip": "Copy scale",
+  "deleteScaleTooltip": "Delete scale",
+  "newScaleButton": "New scale",
+  "metronomeSectionHeader": "Metronome",
+  "keepTickTitle": "Keep tick",
+  "keepTickSubtitle": "Keep the metronome running between tabs",
+  "advancedSectionHeader": "Advanced",
+  "micCalibrationTitle": "Microphone calibration",
+  "micCalibrationSubtitle": "For expert users: correct a microphone's ADC bias",
+  "languageSectionHeader": "Language",
+  "languageSystemDefault": "System default",
+  "aboutSectionHeader": "About",
+  "appDescription": "A Flutter tuner & metronome, in the spirit of the original Semitone app.",
+  "resetSettingsButton": "Reset settings to defaults",
+  "cantDeleteLastScale": "Can't delete the last scale.",
+  "deletedScaleMessage": "Deleted \"{name}\".",
+  "@deletedScaleMessage": {
+    "placeholders": {"name": {"type": "String"}}
+  },
+  "exportFailedMessage": "Could not export: {error}",
+  "@exportFailedMessage": {
+    "placeholders": {"error": {"type": "String"}}
+  },
+  "importedScaleMessage": "Imported \"{name}\".",
+  "@importedScaleMessage": {
+    "placeholders": {"name": {"type": "String"}}
+  },
+  "resetDialogTitle": "Reset settings?",
+  "resetDialogContent": "This replaces every saved scale — including your own — with the bundled presets. This cannot be undone.",
+  "cancelButton": "Cancel",
+  "resetButton": "Reset",
+  "settingsResetMessage": "Settings reset to defaults.",
+
+  "editScaleFallbackTitle": "Edit scale",
+  "resetToDefaultChromaticTooltip": "Reset to default chromatic scale",
+  "scaleNameLabel": "Scale name",
+  "baseFrequencyLabel": "Base frequency",
+  "baseFrequencyHelper": "Pitch of the root tone (★ below)",
+  "rootOctaveLabel": "Root octave",
+  "cakeInstructions": "Tap a slice to select it below. Each tone's wedge runs from the midpoint with its previous neighbour to the midpoint with its next one — duplicate a tone to split its wedge, then move the copy to redraw the split.",
+  "nameColumnHeader": "Name",
+  "positionColumnHeader": "Position (cents)",
+  "noDegreesYet": "No tone heights defined yet.\nTap + to add one.",
+  "addToneTooltip": "Add a new tone",
+  "setAsRootTooltip": "Set as root",
+  "duplicateToneTooltip": "Duplicate (splits this wedge)",
+  "deleteTooltip": "Delete",
+
+  "calibrationTitle": "Microphone calibration",
+  "calibrationDescription": "For expert users. Every microphone's ADC can report a frequency that's slightly sharp or flat. To correct for it, play a steady reference tone near the microphone — a tuning fork or a tone generator — enter the frequency you're playing below, and set the offset from what's measured. That offset is then subtracted from every reading before it's matched to a note.",
+  "referenceToneLabel": "Reference tone (Hz)",
+  "micPermissionRequired": "Microphone permission is required to calibrate.",
+  "listeningLabel": "Listening…",
+  "setOffsetButton": "Set offset from current reading",
+  "offsetSetMessage": "Offset set to {value} Hz.",
+  "@offsetSetMessage": {
+    "placeholders": {"value": {"type": "String"}}
+  },
+  "currentOffsetLabel": "Current offset: {value} Hz",
+  "@currentOffsetLabel": {
+    "placeholders": {"value": {"type": "String"}}
+  },
+  "resetOffsetButton": "Reset to 0 Hz",
+  "offsetResetMessage": "Offset reset to 0 Hz.",
+
+  "centsValue": "{value} cents",
+  "@centsValue": {
+    "placeholders": {"value": {"type": "String"}}
+  },
+  "noToneHeightsDefined": "No tone heights defined"
+}

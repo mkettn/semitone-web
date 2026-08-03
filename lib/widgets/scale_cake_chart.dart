@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/scale_degree.dart';
 import '../models/tuning_scale.dart';
 import '../theme/semitone_theme.dart';
@@ -29,10 +30,10 @@ class ScaleCakeChart extends StatelessWidget {
     if (degrees.isEmpty) {
       return SizedBox(
         height: size,
-        child: const Center(
+        child: Center(
           child: Text(
-            'No tone heights defined',
-            style: TextStyle(color: SemitoneColors.grey4),
+            AppLocalizations.of(context)!.noToneHeightsDefined,
+            style: const TextStyle(color: SemitoneColors.grey4),
           ),
         ),
       );

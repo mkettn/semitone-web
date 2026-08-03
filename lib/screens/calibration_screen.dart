@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/settings_service.dart';
 import '../services/tuner_engine.dart';
 import '../theme/semitone_theme.dart';
@@ -51,7 +52,9 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Offset set to ${(raw - reference).toStringAsFixed(2)} Hz.',
+          AppLocalizations.of(
+            context,
+          )!.offsetSetMessage((raw - reference).toStringAsFixed(2)),
         ),
       ),
     );
@@ -59,9 +62,9 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
 
   void _resetOffset() {
     widget.settings.micOffsetHz = 0.0;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Offset reset to 0 Hz.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context)!.offsetResetMessage)),
+    );
   }
 
   @override
@@ -73,23 +76,18 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Microphone calibration')),
+      appBar: AppBar(title: Text(l10n.calibrationTitle)),
       body: AnimatedBuilder(
         animation: widget.settings,
         builder: (context, _) {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              const Text(
-                'For expert users. Every microphone\'s ADC can report a '
-                'frequency that\'s slightly sharp or flat. To correct for '
-                'it, play a steady reference tone near the microphone — a '
-                'tuning fork or a tone generator — enter the frequency '
-                'you\'re playing below, and set the offset from what\'s '
-                'measured. That offset is then subtracted from every '
-                'reading before it\'s matched to a note.',
-                style: TextStyle(color: SemitoneColors.grey4, fontSize: 14),
+              Text(
+                l10n.calibrationDescription,
+                style: const TextStyle(color: SemitoneColors.grey4, fontSize: 14),
               ),
               const SizedBox(height: 24),
               TextField(
@@ -97,26 +95,24 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Reference tone (Hz)',
-                ),
+                decoration: InputDecoration(labelText: l10n.referenceToneLabel),
               ),
               const SizedBox(height: 24),
               if (!_hasPermission)
-                const Text(
-                  'Microphone permission is required to calibrate.',
-                  style: TextStyle(color: SemitoneColors.red),
+                Text(
+                  l10n.micPermissionRequired,
+                  style: const TextStyle(color: SemitoneColors.red),
                 )
               else if (_engine.captureFailed)
-                const Text(
-                  'No audio input device is available on this system.',
-                  style: TextStyle(color: SemitoneColors.red),
+                Text(
+                  l10n.noAudioDevice,
+                  style: const TextStyle(color: SemitoneColors.red),
                 )
               else
                 Center(
                   child: Text(
                     _rawFrequency == null
-                        ? 'Listening…'
+                        ? l10n.listeningLabel
                         : '${_rawFrequency!.toStringAsFixed(2)} Hz',
                     style: const TextStyle(
                       color: SemitoneColors.white,
@@ -130,11 +126,11 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                 onPressed: _rawFrequency == null || _referenceHz == null
                     ? null
                     : _setOffsetFromCurrentReading,
-                child: const Text('Set offset from current reading'),
+                child: Text(l10n.setOffsetButton),
               ),
               const SizedBox(height: 32),
               Text(
-                'Current offset: ${widget.settings.micOffsetHz.toStringAsFixed(2)} Hz',
+                l10n.currentOffsetLabel(widget.settings.micOffsetHz.toStringAsFixed(2)),
                 style: const TextStyle(color: SemitoneColors.grey4),
               ),
               const SizedBox(height: 8),
@@ -142,7 +138,7 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                 onPressed: widget.settings.micOffsetHz == 0.0
                     ? null
                     : _resetOffset,
-                child: const Text('Reset to 0 Hz'),
+                child: Text(l10n.resetOffsetButton),
               ),
             ],
           );

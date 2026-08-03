@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/scale_degree.dart';
 import '../models/scale_presets.dart';
 import '../models/tuning_scale.dart';
@@ -156,15 +157,16 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final degrees = _scale.degrees;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_scale.name.isEmpty ? 'Edit scale' : _scale.name),
+        title: Text(_scale.name.isEmpty ? l10n.editScaleFallbackTitle : _scale.name),
         actions: [
           IconButton(
             icon: const Icon(Icons.restart_alt),
-            tooltip: 'Reset to default chromatic scale',
+            tooltip: l10n.resetToDefaultChromaticTooltip,
             onPressed: _resetToDefault,
           ),
         ],
@@ -175,8 +177,8 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Scale name',
+              decoration: InputDecoration(
+                labelText: l10n.scaleNameLabel,
                 isDense: true,
               ),
               onChanged: (v) {
@@ -194,9 +196,9 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
                     controller: _baseFrequencyController,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: 'Base frequency',
-                      helperText: 'Pitch of the root tone (★ below)',
+                    decoration: InputDecoration(
+                      labelText: l10n.baseFrequencyLabel,
+                      helperText: l10n.baseFrequencyHelper,
                       suffixText: 'Hz',
                       isDense: true,
                     ),
@@ -215,8 +217,8 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
                   child: TextField(
                     controller: _rootOctaveController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Root octave',
+                    decoration: InputDecoration(
+                      labelText: l10n.rootOctaveLabel,
                       isDense: true,
                     ),
                     onChanged: (v) {
@@ -238,41 +240,38 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
               onSelect: (i) => setState(() => _selectedIndex = i),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 20, 16, 4),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
             child: Text(
-              'Tap a slice to select it below. Each tone\'s wedge runs from '
-              'the midpoint with its previous neighbour to the midpoint with '
-              'its next one — duplicate a tone to split its wedge, then move '
-              'the copy to redraw the split.',
-              style: TextStyle(color: SemitoneColors.grey4, fontSize: 12),
+              l10n.cakeInstructions,
+              style: const TextStyle(color: SemitoneColors.grey4, fontSize: 12),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
                 Expanded(
                   flex: 3,
-                  child: Text('Name', style: TextStyle(color: SemitoneColors.grey4)),
+                  child: Text(l10n.nameColumnHeader, style: const TextStyle(color: SemitoneColors.grey4)),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('Position (cents)', style: TextStyle(color: SemitoneColors.grey4)),
+                  child: Text(l10n.positionColumnHeader, style: const TextStyle(color: SemitoneColors.grey4)),
                 ),
-                SizedBox(width: 136, child: Text('', style: TextStyle(color: SemitoneColors.grey4))),
+                const SizedBox(width: 136),
               ],
             ),
           ),
           const Divider(height: 16),
           if (degrees.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
               child: Center(
                 child: Text(
-                  'No tone heights defined yet.\nTap + to add one.',
+                  l10n.noDegreesYet,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: SemitoneColors.grey4),
+                  style: const TextStyle(color: SemitoneColors.grey4),
                 ),
               ),
             )
@@ -296,7 +295,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addDegree,
-        tooltip: 'Add a new tone',
+        tooltip: l10n.addToneTooltip,
         child: const Icon(Icons.add),
       ),
     );
@@ -359,6 +358,7 @@ class _DegreeRowState extends State<_DegreeRow> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return InkWell(
       onTap: widget.onTap,
       child: Container(
@@ -407,19 +407,19 @@ class _DegreeRowState extends State<_DegreeRow> {
                     color: widget.isRoot
                         ? SemitoneColors.blue
                         : SemitoneColors.grey4,
-                    tooltip: 'Set as root',
+                    tooltip: l10n.setAsRootTooltip,
                     onPressed: widget.onSetRoot,
                   ),
                   IconButton(
                     icon: const Icon(Icons.content_copy),
                     color: SemitoneColors.grey4,
-                    tooltip: 'Duplicate (splits this wedge)',
+                    tooltip: l10n.duplicateToneTooltip,
                     onPressed: widget.onDuplicate,
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline),
                     color: SemitoneColors.grey4,
-                    tooltip: 'Delete',
+                    tooltip: l10n.deleteTooltip,
                     onPressed: widget.onDelete,
                   ),
                 ],
