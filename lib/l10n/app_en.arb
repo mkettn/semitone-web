@@ -1,6 +1,9 @@
 {
   "@@locale": "en",
 
+  "languageName": "English",
+  "@languageName": {"description": "This language's own name, as shown in the language picker."},
+
   "appTitle": "Semitone Web",
   "@appTitle": {"description": "The app's name, shown as a fallback title and in the About section."},
 

@@ -1,6 +1,8 @@
 {
   "@@locale": "de",
 
+  "languageName": "Deutsch",
+
   "appTitle": "Semitone Web",
 
   "tabTuner": "STIMMGERÄT",

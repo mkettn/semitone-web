@@ -227,44 +227,69 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
+/// Each supported locale's own name for itself (e.g. "Deutsch" for German),
+/// read from that locale's own ARB file (`languageName`) rather than
+/// hardcoded here — so a new language is just another ARB file away, with
+/// nothing in Dart code to update.
+Future<String> _languageName(Locale locale) async {
+  final l10n = await AppLocalizations.delegate.load(locale);
+  return l10n.languageName;
+}
+
 /// Picks the UI language: "System default" (null, the default — Flutter
 /// resolves the best supported match from the device's own locale) or one
 /// of the languages the app ships translations for.
-class _LanguageDropdown extends StatelessWidget {
+class _LanguageDropdown extends StatefulWidget {
   const _LanguageDropdown({required this.settings});
 
   final SettingsService settings;
 
   @override
+  State<_LanguageDropdown> createState() => _LanguageDropdownState();
+}
+
+class _LanguageDropdownState extends State<_LanguageDropdown> {
+  Map<String, String>? _namesByCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNames();
+  }
+
+  Future<void> _loadNames() async {
+    final entries = await Future.wait(
+      AppLocalizations.supportedLocales.map(
+        (locale) async => MapEntry(locale.languageCode, await _languageName(locale)),
+      ),
+    );
+    if (mounted) setState(() => _namesByCode = Map.fromEntries(entries));
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final current = settings.locale?.languageCode;
+    final names = _namesByCode;
+    final current = widget.settings.locale?.languageCode;
 
     return DropdownButtonHideUnderline(
       child: DropdownButton<String?>(
-        value: current,
+        value: names == null ? null : current,
         isExpanded: true,
         dropdownColor: SemitoneColors.grey2,
         iconEnabledColor: SemitoneColors.white,
         style: const TextStyle(color: SemitoneColors.white, fontSize: 16),
         items: [
           DropdownMenuItem(value: null, child: Text(l10n.languageSystemDefault)),
-          for (final code in AppLocalizations.supportedLocales.map((l) => l.languageCode))
-            DropdownMenuItem(value: code, child: Text(_languageName(code))),
+          if (names != null)
+            for (final entry in names.entries)
+              DropdownMenuItem(value: entry.key, child: Text(entry.value)),
         ],
-        onChanged: (code) => settings.locale = code == null ? null : Locale(code),
+        onChanged: names == null
+            ? null
+            : (code) => widget.settings.locale = code == null ? null : Locale(code),
       ),
     );
-  }
-
-  String _languageName(String code) {
-    switch (code) {
-      case 'de':
-        return 'Deutsch';
-      case 'en':
-      default:
-        return 'English';
-    }
   }
 }
 
