@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/scale_presets.dart';
 import '../models/tuning_scale.dart';
 import '../services/scale_io.dart';
@@ -43,19 +44,22 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _deleteScale(BuildContext context, TuningScale scale) {
+    final l10n = AppLocalizations.of(context)!;
     if (settings.scales.length <= 1) {
-      _showMessage(context, "Can't delete the last scale.");
+      _showMessage(context, l10n.cantDeleteLastScale);
       return;
     }
     settings.deleteScale(scale.id);
-    _showMessage(context, 'Deleted "${scale.name}".');
+    _showMessage(context, l10n.deletedScaleMessage(scale.name));
   }
 
   Future<void> _exportScale(BuildContext context, TuningScale scale) async {
     try {
       await exportScale(scale);
     } catch (e) {
-      if (context.mounted) _showMessage(context, 'Could not export: $e');
+      if (context.mounted) {
+        _showMessage(context, AppLocalizations.of(context)!.exportFailedMessage('$e'));
+      }
     }
   }
 
@@ -64,7 +68,12 @@ class SettingsScreen extends StatelessWidget {
       final imported = await importScale();
       if (imported == null) return; // user cancelled the picker
       settings.addScale(imported);
-      if (context.mounted) _showMessage(context, 'Imported "${imported.name}".');
+      if (context.mounted) {
+        _showMessage(
+          context,
+          AppLocalizations.of(context)!.importedScaleMessage(imported.name),
+        );
+      }
     } on ScaleIoException catch (e) {
       if (context.mounted) _showMessage(context, e.message);
     }
@@ -75,29 +84,27 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _resetToDefaults(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reset settings?'),
-        content: const Text(
-          'This replaces every saved scale — including your own — with '
-          'the bundled presets. This cannot be undone.',
-        ),
+        title: Text(l10n.resetDialogTitle),
+        content: Text(l10n.resetDialogContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancelButton),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Reset'),
+            child: Text(l10n.resetButton),
           ),
         ],
       ),
     );
     if (confirmed != true) return;
     await settings.resetToDefaults();
-    if (context.mounted) _showMessage(context, 'Settings reset to defaults.');
+    if (context.mounted) _showMessage(context, l10n.settingsResetMessage);
   }
 
   @override
@@ -105,28 +112,29 @@ class SettingsScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: settings,
       builder: (context, _) {
+        final l10n = AppLocalizations.of(context)!;
         final scales = settings.scales;
         final activeId = settings.activeScaleId ?? (scales.isNotEmpty ? scales.first.id : null);
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Settings')),
+          appBar: AppBar(title: Text(l10n.settingsTitle)),
           body: ListView(
             children: [
               _SectionHeader(
-                'Scales',
+                l10n.scalesSectionHeader,
                 trailing: IconButton(
                   icon: const Icon(Icons.file_upload_outlined),
                   color: SemitoneColors.grey4,
-                  tooltip: 'Import a scale from file',
+                  tooltip: l10n.importScaleTooltip,
                   onPressed: () => _importScale(context),
                 ),
               ),
               if (scales.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Text(
-                    'No scales yet.',
-                    style: TextStyle(color: SemitoneColors.grey4),
+                    l10n.noScalesYet,
+                    style: const TextStyle(color: SemitoneColors.grey4),
                   ),
                 )
               else
@@ -134,8 +142,8 @@ class SettingsScreen extends StatelessWidget {
                   ListTile(
                     title: Text(scale.name),
                     subtitle: Text(
-                      '${scale.degrees.length} tone heights'
-                      '${scale.id == activeId ? ' • active' : ''}',
+                      l10n.toneHeightsCount(scale.degrees.length) +
+                          (scale.id == activeId ? l10n.activeScaleSuffix : ''),
                     ),
                     onTap: () => _openEditor(context, scale.id),
                     trailing: Row(
@@ -144,25 +152,25 @@ class SettingsScreen extends StatelessWidget {
                         IconButton(
                           icon: const Icon(Icons.edit_outlined),
                           color: SemitoneColors.grey4,
-                          tooltip: 'Edit scale',
+                          tooltip: l10n.editScaleTooltip,
                           onPressed: () => _openEditor(context, scale.id),
                         ),
                         IconButton(
                           icon: const Icon(Icons.file_download_outlined),
                           color: SemitoneColors.grey4,
-                          tooltip: 'Export scale',
+                          tooltip: l10n.exportScaleTooltip,
                           onPressed: () => _exportScale(context, scale),
                         ),
                         IconButton(
                           icon: const Icon(Icons.content_copy),
                           color: SemitoneColors.grey4,
-                          tooltip: 'Copy scale',
+                          tooltip: l10n.copyScaleTooltip,
                           onPressed: () => _copyScale(context, scale),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline),
                           color: SemitoneColors.grey4,
-                          tooltip: 'Delete scale',
+                          tooltip: l10n.deleteScaleTooltip,
                           onPressed: () => _deleteScale(context, scale),
                         ),
                       ],
@@ -173,48 +181,98 @@ class SettingsScreen extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => _createScale(context),
                   icon: const Icon(Icons.add),
-                  label: const Text('New scale'),
+                  label: Text(l10n.newScaleButton),
                 ),
               ),
-              const _SectionHeader('Metronome'),
+              _SectionHeader(l10n.metronomeSectionHeader),
               SwitchListTile(
-                title: const Text('Keep tick'),
-                subtitle: const Text('Keep the metronome running between tabs'),
+                title: Text(l10n.keepTickTitle),
+                subtitle: Text(l10n.keepTickSubtitle),
                 value: settings.keepTick,
                 onChanged: (v) => settings.keepTick = v,
               ),
-              const _SectionHeader('Advanced'),
+              _SectionHeader(l10n.languageSectionHeader),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: _LanguageDropdown(settings: settings),
+              ),
+              _SectionHeader(l10n.advancedSectionHeader),
               ListTile(
-                title: const Text('Microphone calibration'),
-                subtitle: const Text(
-                  'For expert users: correct a microphone\'s ADC bias',
-                ),
+                title: Text(l10n.micCalibrationTitle),
+                subtitle: Text(l10n.micCalibrationSubtitle),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => CalibrationScreen(settings: settings),
                   ),
                 ),
               ),
-              const _SectionHeader('About'),
-              const ListTile(
-                title: Text('Semitone Web'),
-                subtitle: Text(
-                  'A Flutter tuner & metronome, in the spirit of the '
-                  'original Semitone app.',
-                ),
+              _SectionHeader(l10n.aboutSectionHeader),
+              ListTile(
+                title: Text(l10n.appTitle),
+                subtitle: Text(l10n.appDescription),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: OutlinedButton.icon(
                   onPressed: () => _resetToDefaults(context),
                   icon: const Icon(Icons.restore),
-                  label: const Text('Reset settings to defaults'),
+                  label: Text(l10n.resetSettingsButton),
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// Each supported locale's own name for itself (e.g. "Deutsch" for German),
+/// read from that locale's own ARB file (`languageName` key) rather than
+/// hardcoded here — so a new language is just another ARB file away, with
+/// nothing in Dart code to update. Computed once, synchronously: the
+/// generated delegate's `load()` resolves via a [SynchronousFuture] (there's
+/// no real I/O — the translations are compiled in), whose `then()` callback
+/// runs immediately rather than being deferred to a microtask, and the set
+/// of supported locales is fixed at build time.
+final Map<String, String> _languageNamesByCode = {
+  for (final locale in AppLocalizations.supportedLocales)
+    locale.languageCode: _loadLanguageNameSync(locale),
+};
+
+String _loadLanguageNameSync(Locale locale) {
+  String? name;
+  AppLocalizations.delegate.load(locale).then((l10n) => name = l10n.languageName);
+  return name!;
+}
+
+/// Picks the UI language: "System default" (null, the default — Flutter
+/// resolves the best supported match from the device's own locale) or one
+/// of the languages the app ships translations for.
+class _LanguageDropdown extends StatelessWidget {
+  const _LanguageDropdown({required this.settings});
+
+  final SettingsService settings;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final current = settings.locale?.languageCode;
+
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<String?>(
+        value: current,
+        isExpanded: true,
+        dropdownColor: SemitoneColors.grey2,
+        iconEnabledColor: SemitoneColors.white,
+        style: const TextStyle(color: SemitoneColors.white, fontSize: 16),
+        items: [
+          DropdownMenuItem(value: null, child: Text(l10n.languageSystemDefault)),
+          for (final entry in _languageNamesByCode.entries)
+            DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+        ],
+        onChanged: (code) => settings.locale = code == null ? null : Locale(code),
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/scale_presets.dart';
@@ -18,6 +19,7 @@ class SettingsService extends ChangeNotifier {
   static const _keyScales = 'custom_scales';
   static const _keyActiveScaleId = 'active_custom_scale_id';
   static const _keyMicOffsetHz = 'mic_offset_hz';
+  static const _keyLanguageCode = 'language_code';
 
   final SharedPreferences _prefs;
 
@@ -54,6 +56,25 @@ class SettingsService extends ChangeNotifier {
 
   set micOffsetHz(double value) {
     _prefs.setDouble(_keyMicOffsetHz, value);
+    notifyListeners();
+  }
+
+  /// The UI language the user picked, as a [Locale] built from a saved
+  /// language code — or null to follow the system's language (the
+  /// default), letting Flutter's own locale resolution pick the best
+  /// supported match.
+  Locale? get locale {
+    final code = _prefs.getString(_keyLanguageCode);
+    if (code == null) return null;
+    return Locale(code);
+  }
+
+  set locale(Locale? value) {
+    if (value == null) {
+      _prefs.remove(_keyLanguageCode);
+    } else {
+      _prefs.setString(_keyLanguageCode, value.languageCode);
+    }
     notifyListeners();
   }
 

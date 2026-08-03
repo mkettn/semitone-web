@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/tuning_scale.dart';
 import '../services/settings_service.dart';
 import '../services/tuner_engine.dart';
@@ -67,26 +68,28 @@ class _TunerScreenState extends State<TunerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (!_hasPermission) {
       return Center(
         child: TextButton(
           onPressed: _requested ? null : _requestPermission,
-          child: const Text(
-            'Tap to grant microphone permission',
-            style: TextStyle(color: SemitoneColors.grey4, fontSize: 14),
+          child: Text(
+            l10n.micPermissionPrompt,
+            style: const TextStyle(color: SemitoneColors.grey4, fontSize: 14),
           ),
         ),
       );
     }
 
     if (_engine.captureFailed) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Text(
-            'No audio input device is available on this system.',
+            l10n.noAudioDevice,
             textAlign: TextAlign.center,
-            style: TextStyle(color: SemitoneColors.grey4, fontSize: 14),
+            style: const TextStyle(color: SemitoneColors.grey4, fontSize: 14),
           ),
         ),
       );

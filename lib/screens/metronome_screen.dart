@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/metronome_engine.dart';
 import '../theme/semitone_theme.dart';
 
@@ -64,7 +65,10 @@ class _MetronomeScreenState extends State<MetronomeScreen> {
               _BpmButton(icon: Icons.add, onTap: () => _changeBpm(1)),
             ],
           ),
-          const Text('BPM', style: TextStyle(color: SemitoneColors.grey4)),
+          Text(
+            AppLocalizations.of(context)!.bpmLabel,
+            style: const TextStyle(color: SemitoneColors.grey4),
+          ),
           const SizedBox(height: 24),
           Slider(
             value: _engine.bpm.toDouble(),

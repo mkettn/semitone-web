@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:semitone_web/l10n/app_localizations.dart';
 import 'package:semitone_web/screens/calibration_screen.dart';
 import 'package:semitone_web/services/settings_service.dart';
 
@@ -13,7 +14,11 @@ void main() {
     final settings = await SettingsService.create();
 
     await tester.pumpWidget(
-      MaterialApp(home: CalibrationScreen(settings: settings)),
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: CalibrationScreen(settings: settings),
+      ),
     );
     await tester.pump();
 

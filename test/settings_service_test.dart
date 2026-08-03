@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -103,5 +104,18 @@ void main() {
 
     settings.micOffsetHz = 2.0;
     expect(settings.micOffsetHz, 2.0);
+  });
+
+  test('locale defaults to null (system default) and persists a set value', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = await SettingsService.create();
+
+    expect(settings.locale, isNull);
+
+    settings.locale = const Locale('de');
+    expect(settings.locale, const Locale('de'));
+
+    settings.locale = null;
+    expect(settings.locale, isNull);
   });
 }

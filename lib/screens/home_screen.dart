@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/settings_service.dart';
 import '../theme/semitone_theme.dart';
 import 'metronome_screen.dart';
@@ -18,21 +19,22 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: _ScaleTitleDropdown(settings: settings),
-          bottom: const TabBar(
+          bottom: TabBar(
             tabs: [
-              Tab(text: 'TUNER'),
-              Tab(text: 'METRONOME'),
+              Tab(text: l10n.tabTuner),
+              Tab(text: l10n.tabMetronome),
             ],
           ),
           actions: [
             IconButton(
               icon: const Icon(Icons.settings),
-              tooltip: 'Settings',
+              tooltip: l10n.settingsTooltip,
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -72,15 +74,16 @@ class _ScaleTitleDropdown extends StatelessWidget {
             ? active.id
             : null;
 
+        final appTitle = AppLocalizations.of(context)!.appTitle;
         if (scales.isEmpty) {
-          return const Text('Semitone Web');
+          return Text(appTitle);
         }
 
         return DropdownButtonHideUnderline(
           child: DropdownButton<String>(
             value: value,
             isExpanded: true,
-            hint: Text(active?.name ?? 'Semitone Web'),
+            hint: Text(active?.name ?? appTitle),
             dropdownColor: SemitoneColors.grey2,
             iconEnabledColor: SemitoneColors.white,
             style: const TextStyle(

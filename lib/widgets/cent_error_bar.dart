@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme/semitone_theme.dart';
 
 /// Visualizes tuning error in cents as a horizontal bar with a centre
@@ -26,7 +27,9 @@ class CentErrorBar extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
-            '${errorCents >= 0 ? '+' : ''}${errorCents.toStringAsFixed(2)} cents',
+            AppLocalizations.of(context)!.centsValue(
+              '${errorCents >= 0 ? '+' : ''}${errorCents.toStringAsFixed(2)}',
+            ),
             style: TextStyle(
               color: errorCents.abs() < 5
                   ? SemitoneColors.blue
