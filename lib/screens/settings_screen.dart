@@ -228,66 +228,50 @@ class SettingsScreen extends StatelessWidget {
 }
 
 /// Each supported locale's own name for itself (e.g. "Deutsch" for German),
-/// read from that locale's own ARB file (`languageName`) rather than
+/// read from that locale's own ARB file (`languageName` key) rather than
 /// hardcoded here — so a new language is just another ARB file away, with
-/// nothing in Dart code to update.
-Future<String> _languageName(Locale locale) async {
-  final l10n = await AppLocalizations.delegate.load(locale);
-  return l10n.languageName;
+/// nothing in Dart code to update. Computed once, synchronously: the
+/// generated delegate's `load()` resolves via a [SynchronousFuture] (there's
+/// no real I/O — the translations are compiled in), whose `then()` callback
+/// runs immediately rather than being deferred to a microtask, and the set
+/// of supported locales is fixed at build time.
+final Map<String, String> _languageNamesByCode = {
+  for (final locale in AppLocalizations.supportedLocales)
+    locale.languageCode: _loadLanguageNameSync(locale),
+};
+
+String _loadLanguageNameSync(Locale locale) {
+  String? name;
+  AppLocalizations.delegate.load(locale).then((l10n) => name = l10n.languageName);
+  return name!;
 }
 
 /// Picks the UI language: "System default" (null, the default — Flutter
 /// resolves the best supported match from the device's own locale) or one
 /// of the languages the app ships translations for.
-class _LanguageDropdown extends StatefulWidget {
+class _LanguageDropdown extends StatelessWidget {
   const _LanguageDropdown({required this.settings});
 
   final SettingsService settings;
 
   @override
-  State<_LanguageDropdown> createState() => _LanguageDropdownState();
-}
-
-class _LanguageDropdownState extends State<_LanguageDropdown> {
-  Map<String, String>? _namesByCode;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadNames();
-  }
-
-  Future<void> _loadNames() async {
-    final entries = await Future.wait(
-      AppLocalizations.supportedLocales.map(
-        (locale) async => MapEntry(locale.languageCode, await _languageName(locale)),
-      ),
-    );
-    if (mounted) setState(() => _namesByCode = Map.fromEntries(entries));
-  }
-
-  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final names = _namesByCode;
-    final current = widget.settings.locale?.languageCode;
+    final current = settings.locale?.languageCode;
 
     return DropdownButtonHideUnderline(
       child: DropdownButton<String?>(
-        value: names == null ? null : current,
+        value: current,
         isExpanded: true,
         dropdownColor: SemitoneColors.grey2,
         iconEnabledColor: SemitoneColors.white,
         style: const TextStyle(color: SemitoneColors.white, fontSize: 16),
         items: [
           DropdownMenuItem(value: null, child: Text(l10n.languageSystemDefault)),
-          if (names != null)
-            for (final entry in names.entries)
-              DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+          for (final entry in _languageNamesByCode.entries)
+            DropdownMenuItem(value: entry.key, child: Text(entry.value)),
         ],
-        onChanged: names == null
-            ? null
-            : (code) => widget.settings.locale = code == null ? null : Locale(code),
+        onChanged: (code) => settings.locale = code == null ? null : Locale(code),
       ),
     );
   }
