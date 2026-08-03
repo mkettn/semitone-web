@@ -1,0 +1,77 @@
+name: Reusable - Flutter release build
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        description: android or ios
+        required: true
+        type: string
+      artifact_name:
+        required: true
+        type: string
+      artifact_path:
+        required: true
+        type: string
+    secrets:
+      # Android release signing (optional). Unset means the APK is signed
+      # with the debug key instead — fine to sideload from a GitHub
+      # release, not accepted by the Play Store. See
+      # android/app/build.gradle.kts for how these are consumed.
+      android_keystore_base64:
+        required: false
+      android_keystore_password:
+        required: false
+      android_key_alias:
+        required: false
+      android_key_password:
+        required: false
+
+jobs:
+  build:
+    # iOS builds require Xcode, so only macOS runners can produce one.
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-latest' || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Configure Android release signing
+        if: inputs.platform == 'android' && secrets.android_keystore_base64 != ''
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.android_keystore_base64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          cat > android/key.properties <<PROPS
+          storeFile=release.keystore
+          storePassword=${{ secrets.android_keystore_password }}
+          keyAlias=${{ secrets.android_key_alias }}
+          keyPassword=${{ secrets.android_key_password }}
+          PROPS
+
+      - name: Build Android APK
+        if: inputs.platform == 'android'
+        run: flutter build apk --release
+
+      # No Apple signing certificate or provisioning profile is configured
+      # yet (that's needed for App Store distribution, added later), so
+      # this only proves the iOS build compiles — the result can't be
+      # installed on a device or uploaded anywhere.
+      - name: Build iOS (unsigned)
+        if: inputs.platform == 'ios'
+        run: flutter build ios --release --no-codesign
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifact_path }}
+          if-no-files-found: error

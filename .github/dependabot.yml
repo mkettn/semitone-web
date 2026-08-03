@@ -1,0 +1,40 @@
+version: 2
+updates:
+  # Dart/Flutter packages from pubspec.yaml.
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      # All security-fix updates land in a single weekly PR instead of one
+      # PR per vulnerable package.
+      security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
+      # Same grouping for routine (non-security) version bumps, so both
+      # kinds of updates stay batched rather than flooding the PR list.
+      dart-dependencies:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps"
+
+  # Actions used by the workflows in .github/workflows/.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
+      github-actions:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps"

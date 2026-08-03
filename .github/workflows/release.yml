@@ -1,0 +1,54 @@
+name: Release
+
+# Tag pushes (v1.2.3) build both platforms and publish a GitHub release
+# with the Android APK attached. workflow_dispatch runs the same builds
+# without publishing, e.g. to sanity-check that iOS still compiles.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    uses: ./.github/workflows/reusable-flutter-build.yml
+    with:
+      platform: android
+      artifact_name: app-release-apk
+      artifact_path: build/app/outputs/flutter-apk/app-release.apk
+    secrets:
+      android_keystore_base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      android_key_alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+      android_key_password: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+  # Currently just a build-health check — nothing is signed or published
+  # for iOS yet. Once App Store distribution is set up, this can grow
+  # its own signing step (mirroring Android's above) and a publish job
+  # that uploads to TestFlight/App Store Connect instead of skipping it.
+  ios:
+    uses: ./.github/workflows/reusable-flutter-build.yml
+    with:
+      platform: ios
+      artifact_name: Runner.app
+      artifact_path: build/ios/iphoneos/Runner.app
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [android, ios]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release-apk
+          path: dist
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/app-release.apk
+          generate_release_notes: true
