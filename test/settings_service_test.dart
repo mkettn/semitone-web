@@ -94,4 +94,14 @@ void main() {
     expect(settings.scales.any((s) => s.name == 'my custom scale'), isFalse);
     expect(settings.activeScale?.name, 'Chromatic');
   });
+
+  test('micOffsetHz defaults to 0 and persists a set value', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = await SettingsService.create();
+
+    expect(settings.micOffsetHz, 0.0);
+
+    settings.micOffsetHz = 2.0;
+    expect(settings.micOffsetHz, 2.0);
+  });
 }

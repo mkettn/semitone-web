@@ -17,6 +17,7 @@ class SettingsService extends ChangeNotifier {
   static const _keyKeepTick = 'keeptick';
   static const _keyScales = 'custom_scales';
   static const _keyActiveScaleId = 'active_custom_scale_id';
+  static const _keyMicOffsetHz = 'mic_offset_hz';
 
   final SharedPreferences _prefs;
 
@@ -42,6 +43,17 @@ class SettingsService extends ChangeNotifier {
 
   set keepTick(bool value) {
     _prefs.setBool(_keyKeepTick, value);
+    notifyListeners();
+  }
+
+  /// Fixed correction, in Hz, subtracted from every raw pitch reading
+  /// before it's matched against a scale — compensates for a microphone's
+  /// ADC reporting a consistently sharp or flat frequency. Set via the
+  /// calibration screen; zero (no correction) until then.
+  double get micOffsetHz => _prefs.getDouble(_keyMicOffsetHz) ?? 0.0;
+
+  set micOffsetHz(double value) {
+    _prefs.setDouble(_keyMicOffsetHz, value);
     notifyListeners();
   }
 

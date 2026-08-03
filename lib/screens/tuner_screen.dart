@@ -24,6 +24,8 @@ class _TunerScreenState extends State<TunerScreen> {
   @override
   void initState() {
     super.initState();
+    _engine.calibrationOffsetHz = widget.settings.micOffsetHz;
+    widget.settings.addListener(_onSettingsChanged);
     _init();
   }
 
@@ -34,6 +36,10 @@ class _TunerScreenState extends State<TunerScreen> {
       await _engine.start();
     }
     if (mounted) setState(() {});
+  }
+
+  void _onSettingsChanged() {
+    _engine.calibrationOffsetHz = widget.settings.micOffsetHz;
   }
 
   void _onReading(PitchReading reading) {
@@ -54,6 +60,7 @@ class _TunerScreenState extends State<TunerScreen> {
 
   @override
   void dispose() {
+    widget.settings.removeListener(_onSettingsChanged);
     _engine.dispose();
     super.dispose();
   }
