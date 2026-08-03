@@ -5,6 +5,7 @@ import '../models/tuning_scale.dart';
 import '../services/scale_io.dart';
 import '../services/settings_service.dart';
 import '../theme/semitone_theme.dart';
+import 'calibration_screen.dart';
 import 'custom_scale_screen.dart';
 
 /// Settings, including scale management (create/edit/copy/delete/
@@ -181,6 +182,18 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: const Text('Keep the metronome running between tabs'),
                 value: settings.keepTick,
                 onChanged: (v) => settings.keepTick = v,
+              ),
+              const _SectionHeader('Advanced'),
+              ListTile(
+                title: const Text('Microphone calibration'),
+                subtitle: const Text(
+                  'For expert users: correct a microphone\'s ADC bias',
+                ),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CalibrationScreen(settings: settings),
+                  ),
+                ),
               ),
               const _SectionHeader('About'),
               const ListTile(

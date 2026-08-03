@@ -32,6 +32,11 @@ class TunerEngine {
 
   final List<double> _history = List.filled(_histSize, 0, growable: true);
 
+  /// Fixed correction, in Hz, subtracted from every raw reading before
+  /// smoothing — compensates for a microphone whose ADC consistently
+  /// reports a sharp or flat frequency. See the calibration screen.
+  double calibrationOffsetHz = 0.0;
+
   // Purely an internal anchor for smoothing in log-frequency (semitone)
   // space, which behaves consistently across registers unlike smoothing
   // raw Hz values directly. Not user-facing and unrelated to any scale's
@@ -112,8 +117,10 @@ class TunerEngine {
         samples[i] = s / 1024.0;
       }
 
-      final freq = _detector.frequency(samples, _effectiveSampleRate);
-      if (freq == null || freq.isNaN || freq <= 0) return;
+      final rawFreq = _detector.frequency(samples, _effectiveSampleRate);
+      if (rawFreq == null || rawFreq.isNaN || rawFreq <= 0) return;
+      final freq = rawFreq - calibrationOffsetHz;
+      if (freq <= 0) return;
 
       final semitone = 12 * (math.log(freq / _smoothingAnchor) / math.ln2);
       _history.removeAt(0);
