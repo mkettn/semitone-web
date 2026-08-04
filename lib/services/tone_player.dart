@@ -24,7 +24,8 @@ class TonePlayer extends ChangeNotifier {
       await stop();
       return;
     }
-    await _player.stop();
+    if (_playingKey != null) await _fadeOutAndStop();
+    await _player.setVolume(1.0);
     await _player.setReleaseMode(ReleaseMode.loop);
     await _player.setSourceBytes(_toneWav(frequencyHz));
     await _player.resume();
@@ -34,9 +35,21 @@ class TonePlayer extends ChangeNotifier {
 
   Future<void> stop() async {
     if (_playingKey == null) return;
-    await _player.stop();
+    await _fadeOutAndStop();
     _playingKey = null;
     notifyListeners();
+  }
+
+  /// Cutting the loop off mid-waveform is an abrupt jump to silence that
+  /// reliably reads as a click/pop ("creaky") — ramping the volume down
+  /// first hides the seam.
+  Future<void> _fadeOutAndStop() async {
+    const steps = 8;
+    for (var i = steps - 1; i >= 0; i--) {
+      await _player.setVolume(i / steps);
+      await Future.delayed(const Duration(milliseconds: 6));
+    }
+    await _player.stop();
   }
 
   /// Synthesizes a whole number of cycles of a sine wave at [frequency],

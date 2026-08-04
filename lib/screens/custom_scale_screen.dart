@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
@@ -145,6 +143,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   }
 
   void _setRoot(int index) {
+    _tonePlayer.stop();
     setState(() {
       _scale = _scale.copyWith(rootIndex: index);
     });
@@ -221,6 +220,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
                     onChanged: (v) {
                       final parsed = double.tryParse(v);
                       if (parsed != null && parsed > 0) {
+                        _tonePlayer.stop();
                         _scale = _scale.copyWith(baseFrequency: parsed);
                         _persist();
                       }
@@ -240,6 +240,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
                     onChanged: (v) {
                       final parsed = int.tryParse(v);
                       if (parsed != null) {
+                        _tonePlayer.stop();
                         _scale = _scale.copyWith(rootOctave: parsed);
                         _persist();
                       }
@@ -294,9 +295,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
           else
             ...List.generate(degrees.length, (index) {
               final degree = degrees[index];
-              final rootCents = degrees[_scale.rootIndex].cents;
-              final frequency =
-                  _scale.baseFrequency * math.pow(2, (degree.cents - rootCents) / 1200);
+              final frequency = _scale.frequencyForDegree(index);
               return _DegreeRow(
                 key: ValueKey('$index-${degree.name}'),
                 degree: degree,

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:semitone_web/models/scale_degree.dart';
@@ -82,6 +84,47 @@ void main() {
     final scale = _chromaticFixture(baseFrequency: 261.63);
     final restored = TuningScale.fromJsonString(scale.toJsonString());
     expect(restored.baseFrequency, 261.63);
+  });
+
+  test('frequencyForDegree returns baseFrequency exactly at the root', () {
+    final scale = _chromaticFixture(baseFrequency: 440);
+    expect(scale.frequencyForDegree(scale.rootIndex), closeTo(440, 1e-9));
+  });
+
+  test('frequencyForDegree offsets other degrees by their cents distance from root', () {
+    final scale = _chromaticFixture(baseFrequency: 440);
+    final rootIndex = scale.rootIndex; // A, index 9
+
+    // A# is one semitone (100 cents) above A.
+    final aSharp = scale.frequencyForDegree(rootIndex + 1);
+    expect(aSharp, closeTo(440 * math.pow(2, 100 / 1200), 1e-6));
+
+    // C sits 900 cents *before* A in the sorted degree list, i.e. below it.
+    final c = scale.frequencyForDegree(0);
+    expect(c, closeTo(440 * math.pow(2, -900 / 1200), 1e-6));
+  });
+
+  test('frequencyForDegree shifts by whole octaves relative to rootOctave 4', () {
+    final at4 = _chromaticFixture(baseFrequency: 440);
+    expect(at4.frequencyForDegree(at4.rootIndex), closeTo(440, 1e-9));
+
+    final at5 = TuningScale(
+      name: at4.name,
+      degrees: at4.degrees,
+      rootIndex: at4.rootIndex,
+      rootOctave: 5,
+      baseFrequency: 440,
+    );
+    expect(at5.frequencyForDegree(at5.rootIndex), closeTo(880, 1e-6));
+
+    final at3 = TuningScale(
+      name: at4.name,
+      degrees: at4.degrees,
+      rootIndex: at4.rootIndex,
+      rootOctave: 3,
+      baseFrequency: 440,
+    );
+    expect(at3.frequencyForDegree(at3.rootIndex), closeTo(220, 1e-6));
   });
 
   test('empty() has no degrees and matches as "?"', () {

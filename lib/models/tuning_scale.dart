@@ -90,6 +90,20 @@ class TuningScale {
     });
   }
 
+  /// The pitch, in Hz, of the degree at [index] — [baseFrequency] shifted
+  /// by that degree's distance from the root in cents, then by whole
+  /// octaves so that [rootOctave] 4 (scientific pitch notation's reference
+  /// octave — e.g. A4 = 440 Hz) never introduces a shift, and any other
+  /// value transposes the whole scale up or down by that many octaves.
+  /// Used to preview a degree's pitch while editing (see
+  /// `CustomScaleScreen`), not for pitch matching.
+  double frequencyForDegree(int index) {
+    final rootCents = degrees[rootIndex].cents;
+    final centsFromRoot = degrees[index].cents - rootCents;
+    final octaveShift = rootOctave - 4;
+    return baseFrequency * math.pow(2, centsFromRoot / 1200 + octaveShift);
+  }
+
   /// Match a detected fundamental frequency in Hz against this scale,
   /// converting it to cents relative to [baseFrequency] and delegating to
   /// [match].
