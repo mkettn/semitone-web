@@ -104,7 +104,11 @@ void main() {
     expect(c, closeTo(440 * math.pow(2, -900 / 1200), 1e-6));
   });
 
-  test('frequencyForDegree shifts by whole octaves relative to rootOctave 4', () {
+  test('frequencyForDegree ignores rootOctave — only baseFrequency sets the root\'s pitch', () {
+    // rootOctave is just the octave *label* attached to baseFrequency (see
+    // its doc comment: "Octave number assigned to rootIndex when the
+    // detected pitch exactly matches baseFrequency") — changing it renames
+    // what the root is called, it doesn't transpose what's previewed.
     final at4 = _chromaticFixture(baseFrequency: 440);
     expect(at4.frequencyForDegree(at4.rootIndex), closeTo(440, 1e-9));
 
@@ -115,7 +119,7 @@ void main() {
       rootOctave: 5,
       baseFrequency: 440,
     );
-    expect(at5.frequencyForDegree(at5.rootIndex), closeTo(880, 1e-6));
+    expect(at5.frequencyForDegree(at5.rootIndex), closeTo(440, 1e-9));
 
     final at3 = TuningScale(
       name: at4.name,
@@ -124,7 +128,7 @@ void main() {
       rootOctave: 3,
       baseFrequency: 440,
     );
-    expect(at3.frequencyForDegree(at3.rootIndex), closeTo(220, 1e-6));
+    expect(at3.frequencyForDegree(at3.rootIndex), closeTo(440, 1e-9));
   });
 
   test('empty() has no degrees and matches as "?"', () {
