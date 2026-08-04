@@ -32,7 +32,10 @@ class TonePlayer extends ChangeNotifier {
     }
     if (_playingKey != null) await _fadeOutAndStop();
     await _player.setVolume(1.0);
-    await _player.setSourceBytes(pcmToWavBytes(pluckedTonePcm(frequencyHz), 44100));
+    await _player.setSourceBytes(
+      pcmToWavBytes(pluckedTonePcm(frequencyHz), 44100),
+      mimeType: 'audio/wav',
+    );
     await _player.resume();
     _playingKey = key;
     notifyListeners();
