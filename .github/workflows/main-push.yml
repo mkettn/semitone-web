@@ -1,4 +1,4 @@
-name: Deploy Main
+name: Main push
 
 on:
   push:
@@ -7,13 +7,16 @@ on:
 # Only the latest push to main matters; a stale in-flight deploy can be
 # dropped in favor of a newer one.
 concurrency:
-  group: deploy-main
+  group: main-push
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  test:
+    uses: ./.github/workflows/_test.yml
+
   compute:
     runs-on: ubuntu-latest
     outputs:
@@ -23,7 +26,7 @@ jobs:
     steps:
       # Deploys to the *root* of REMOTE_BASE_PATH, the same host and base
       # path that PR previews live under (as REMOTE_BASE_PATH/pr-<N>/) —
-      # see reusable-sftp-deploy.yml's exclude_regex input for how the two
+      # see _web-deploy.yml's exclude_regex input for how the two
       # coexist.
       - name: Compute base href and remote dir
         id: compute
@@ -42,7 +45,7 @@ jobs:
           # flutter build web rejects anything not starting and ending with
           # "/". Derive it from PREVIEW_BASE_URL's own path component (e.g.
           # "/club_office/"), which is just "/" when PREVIEW_BASE_URL is a
-          # bare domain — same derivation pr-preview.yml uses, minus the
+          # bare domain — same derivation pull-request.yml uses, minus the
           # "pr-<N>/" suffix since main deploys to the site root.
           no_scheme="${PREVIEW_BASE_URL#*://}"
           if [[ "$no_scheme" == */* ]]; then
@@ -53,14 +56,14 @@ jobs:
           echo "base_href=${base_path%/}/" >> "$GITHUB_OUTPUT"
 
   deploy:
-    needs: compute
-    uses: ./.github/workflows/reusable-sftp-deploy.yml
+    needs: [test, compute]
+    uses: ./.github/workflows/_web-deploy.yml
     with:
       action: sync
       base_href: ${{ needs.compute.outputs.base_href }}
       remote_dir: ${{ needs.compute.outputs.remote_dir }}
       # Protects PR preview subfolders (remote_dir/pr-<N>/, deployed by
-      # pr-preview.yml) from this sync's --delete pass. Without it,
+      # pull-request.yml) from this sync's --delete pass. Without it,
       # mirroring the site root with --delete would treat every pr-<N>/
       # directory as "not in the local build output" and wipe out every
       # live preview on each push to main.

@@ -1,14 +1,14 @@
-name: PR Preview
+name: Pull request
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
 
-# Cancel a stale in-flight deploy for this PR when a newer push arrives.
-# Shares its group name with pr-preview-cleanup.yml so a close event queues
-# behind an in-progress deploy instead of racing it.
+# Cancel a stale in-flight run for this PR when a newer push arrives.
+# Shares its group name with pull-request-cleanup.yml so a close event
+# queues behind an in-progress run instead of racing it.
 concurrency:
-  group: pr-preview-${{ github.event.number }}
+  group: pull-request-${{ github.event.number }}
   cancel-in-progress: true
 
 permissions:
@@ -16,6 +16,9 @@ permissions:
   pull-requests: write
 
 jobs:
+  test:
+    uses: ./.github/workflows/_test.yml
+
   compute:
     runs-on: ubuntu-latest
     outputs:
@@ -54,8 +57,13 @@ jobs:
           echo "base_href=${base_path%/}/pr-${PR_NUMBER}/" >> "$GITHUB_OUTPUT"
 
   deploy:
-    needs: compute
-    uses: ./.github/workflows/reusable-sftp-deploy.yml
+    needs: [test, compute]
+    # Skip the preview for draft PRs from anyone but the repo owner — it
+    # publishes once the PR is either opened by the owner directly, or
+    # marked ready for review (the "I reviewed it" signal). A later push
+    # to an already-ready PR re-triggers this normally.
+    if: github.event.pull_request.draft == false || github.event.pull_request.author_association == 'OWNER'
+    uses: ./.github/workflows/_web-deploy.yml
     with:
       action: sync
       base_href: ${{ needs.compute.outputs.base_href }}
@@ -68,6 +76,9 @@ jobs:
       ssh_password: ${{ secrets.SSH_PASSWORD }}
 
   comment:
+    # Runs whenever deploy did (this job is skipped for free when deploy
+    # is skipped by its own if:, since a skipped need skips its dependents
+    # by default).
     needs: [compute, deploy]
     runs-on: ubuntu-latest
     steps:

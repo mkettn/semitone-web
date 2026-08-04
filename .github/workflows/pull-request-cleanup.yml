@@ -1,13 +1,13 @@
-name: PR Preview Cleanup
+name: Pull request cleanup
 
 on:
   pull_request:
     types: [closed]
 
-# Shares its group name with pr-preview.yml so this queues behind an
+# Shares its group name with pull-request.yml so this queues behind an
 # in-progress deploy for the same PR instead of racing it.
 concurrency:
-  group: pr-preview-${{ github.event.number }}
+  group: pull-request-${{ github.event.number }}
   cancel-in-progress: false
 
 permissions:
@@ -29,7 +29,7 @@ jobs:
 
   cleanup:
     needs: compute
-    uses: ./.github/workflows/reusable-sftp-deploy.yml
+    uses: ./.github/workflows/_web-deploy.yml
     with:
       action: delete
       remote_dir: ${{ needs.compute.outputs.remote_dir }}

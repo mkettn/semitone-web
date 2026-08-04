@@ -13,8 +13,12 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    uses: ./.github/workflows/_test.yml
+
   android:
-    uses: ./.github/workflows/reusable-flutter-build.yml
+    needs: test
+    uses: ./.github/workflows/_flutter-build.yml
     with:
       platform: android
       artifact_name: app-release-apk
@@ -30,7 +34,8 @@ jobs:
   # its own signing step (mirroring Android's above) and a publish job
   # that uploads to TestFlight/App Store Connect instead of skipping it.
   ios:
-    uses: ./.github/workflows/reusable-flutter-build.yml
+    needs: test
+    uses: ./.github/workflows/_flutter-build.yml
     with:
       platform: ios
       artifact_name: Runner.app

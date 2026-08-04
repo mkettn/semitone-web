@@ -1,4 +1,4 @@
-name: Reusable - SFTP deploy
+name: _ Web deploy
 
 on:
   workflow_call:
