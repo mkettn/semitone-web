@@ -3,11 +3,20 @@ import 'package:flutter/foundation.dart';
 
 import 'wav_synth.dart';
 
-/// Plays a single sustained sine-wave tone at a time — for previewing a
-/// scale degree's pitch while editing it, not for actual tuning reference.
-/// Starting a new tone stops whatever was already playing; toggling the
-/// same key off just stops it.
+/// Plays a single one-shot preview note at a time — for previewing a scale
+/// degree's pitch while editing it, not for actual tuning reference. The
+/// note decays to silence on its own after a few seconds; starting a new
+/// one stops whatever was already playing, and toggling the same key off
+/// just stops it early.
 class TonePlayer extends ChangeNotifier {
+  TonePlayer() {
+    _player.onPlayerComplete.listen((_) {
+      if (_playingKey == null) return;
+      _playingKey = null;
+      notifyListeners();
+    });
+  }
+
   final AudioPlayer _player = AudioPlayer();
   Object? _playingKey;
 
@@ -23,8 +32,7 @@ class TonePlayer extends ChangeNotifier {
     }
     if (_playingKey != null) await _fadeOutAndStop();
     await _player.setVolume(1.0);
-    await _player.setReleaseMode(ReleaseMode.loop);
-    await _player.setSourceBytes(pcmToWavBytes(loopingSinePcm(frequencyHz), 44100));
+    await _player.setSourceBytes(pcmToWavBytes(pluckedTonePcm(frequencyHz), 44100));
     await _player.resume();
     _playingKey = key;
     notifyListeners();
@@ -37,9 +45,11 @@ class TonePlayer extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Cutting the loop off mid-waveform is an abrupt jump to silence that
-  /// reliably reads as a click/pop ("creaky") — ramping the volume down
-  /// first hides the seam.
+  /// Cutting playback off mid-waveform is an abrupt jump to silence that
+  /// reliably reads as a click/pop — ramping the volume down first hides
+  /// it. Only matters for an early interruption now (switching notes or
+  /// explicit stop); letting a note decay to the end of its own buffer
+  /// never needs this, since it's already faded to ~silence by then.
   Future<void> _fadeOutAndStop() async {
     const steps = 8;
     for (var i = steps - 1; i >= 0; i--) {

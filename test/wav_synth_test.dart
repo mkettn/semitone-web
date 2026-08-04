@@ -6,55 +6,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:semitone_web/services/wav_synth.dart';
 
 void main() {
-  test('loopingSinePcm starts at a zero crossing', () {
-    final pcm = loopingSinePcm(440.0);
+  test('pluckedTonePcm has durationSeconds worth of samples', () {
+    final pcm = pluckedTonePcm(440.0, sampleRate: 44100, durationSeconds: 2.0);
+    expect(pcm.length, 44100 * 2);
+  });
+
+  test('pluckedTonePcm starts at silence (attack ramps in from 0)', () {
+    final pcm = pluckedTonePcm(440.0);
     expect(pcm.first, 0);
   });
 
-  test('loopingSinePcm has no discontinuity at the loop seam', () {
-    const frequency = 444.0; // deliberately not a "nice" divisor of 44100
-    const sampleRate = 44100;
-    const targetSeconds = 1.0;
-    final pcm = loopingSinePcm(
-      frequency,
-      sampleRate: sampleRate,
-      targetSeconds: targetSeconds,
-    );
+  test('pluckedTonePcm decays to near silence by the end of its one-shot buffer', () {
+    // A one-shot note only avoids clicking at all if it's genuinely
+    // faded away by the time playback reaches the end of the buffer —
+    // there's no fade-out step for a note left to finish on its own.
+    final pcm = pluckedTonePcm(440.0, sampleRate: 44100, durationSeconds: 3.0);
 
-    // loopingSinePcm nudges the synthesis frequency to whatever makes
-    // pcm.length an exact whole number of cycles — recompute that
-    // adjustment the same way it does, from the same inputs, and confirm
-    // continuing the wave one sample past the buffer lands back on the
-    // first sample. That's the actual property that makes ReleaseMode.loop
-    // click-free: the seam has to be phase-continuous, not just "close".
-    final cycles = math.max(1, (frequency * targetSeconds).round());
-    final loopFrequency = cycles * sampleRate / pcm.length;
-    final nextSample = (math.sin(2 * math.pi * loopFrequency * pcm.length / sampleRate) * 26000)
-        .round()
-        .clamp(-32768, 32767);
-    expect(nextSample, pcm.first);
-  });
+    int peakAbs(Iterable<int> samples) => samples.map((s) => s.abs()).reduce(math.max);
+    final earlyPeak = peakAbs(pcm.take(4410)); // first 100ms
+    final latePeak = peakAbs(pcm.skip(pcm.length - 4410)); // last 100ms
 
-  test('loopingSinePcm stays within a fraction of a cent of the requested pitch', () {
-    const frequency = 444.0;
-    const sampleRate = 44100;
-    const targetSeconds = 1.0;
-    final pcm = loopingSinePcm(
-      frequency,
-      sampleRate: sampleRate,
-      targetSeconds: targetSeconds,
-    );
-
-    final cycles = math.max(1, (frequency * targetSeconds).round());
-    final loopFrequency = cycles * sampleRate / pcm.length;
-    final centsOff = 1200 * (math.log(loopFrequency / frequency) / math.ln2);
-    expect(centsOff.abs(), lessThan(0.1));
-  });
-
-  test('loopingSinePcm respects targetSeconds to within one cycle', () {
-    const frequency = 220.0;
-    final pcm = loopingSinePcm(frequency, targetSeconds: 1.0);
-    expect(pcm.length, closeTo(44100, 44100 / frequency));
+    expect(latePeak, lessThan(earlyPeak * 0.1));
   });
 
   test('encodes a valid RIFF/WAVE header for the given PCM data', () {
