@@ -13,12 +13,19 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    uses: ./.github/workflows/_test.yml
+
   android:
-    uses: ./.github/workflows/reusable-flutter-build.yml
+    needs: test
+    uses: ./.github/workflows/_flutter-build.yml
     with:
       platform: android
       artifact_name: app-release-apk
-      artifact_path: build/app/outputs/flutter-apk/app-release.apk
+      # The actual filename is computed at build time (version + short sha
+      # + arch — see _flutter-build.yml's "Rename Android release APK"
+      # step), so this is a glob rather than a fixed name.
+      artifact_path: build/app/outputs/flutter-apk/*.apk
     secrets:
       android_keystore_base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -30,7 +37,8 @@ jobs:
   # its own signing step (mirroring Android's above) and a publish job
   # that uploads to TestFlight/App Store Connect instead of skipping it.
   ios:
-    uses: ./.github/workflows/reusable-flutter-build.yml
+    needs: test
+    uses: ./.github/workflows/_flutter-build.yml
     with:
       platform: ios
       artifact_name: Runner.app
@@ -50,5 +58,5 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          files: dist/app-release.apk
+          files: dist/*.apk
           generate_release_notes: true

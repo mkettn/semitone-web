@@ -1,4 +1,4 @@
-name: Reusable - Flutter release build
+name: _ Flutter release build
 
 on:
   workflow_call:
@@ -31,6 +31,12 @@ jobs:
   build:
     # iOS builds require Xcode, so only macOS runners can produce one.
     runs-on: ${{ inputs.platform == 'ios' && 'macos-latest' || 'ubuntu-latest' }}
+    # `secrets` isn't a recognized context inside `if:` conditions — only
+    # `env`, `github`, `job`, `steps`, `runner`, and `vars` are. Mirroring
+    # the one secret we need to branch on into env here is what makes the
+    # step below able to check whether it was set.
+    env:
+      HAS_ANDROID_KEYSTORE: ${{ secrets.android_keystore_base64 != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -45,7 +51,7 @@ jobs:
         run: flutter pub get
 
       - name: Configure Android release signing
-        if: inputs.platform == 'android' && secrets.android_keystore_base64 != ''
+        if: inputs.platform == 'android' && env.HAS_ANDROID_KEYSTORE == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.android_keystore_base64 }}
         run: |
@@ -57,9 +63,31 @@ jobs:
           keyPassword=${{ secrets.android_key_password }}
           PROPS
 
-      - name: Build Android APK
+      # --target-platform android-arm64 restricts the build to arm64 only
+      # instead of the default "fat" APK bundling every ABI (arm, arm64,
+      # x86_64) — arm64 alone covers essentially all real devices this app
+      # targets, and there's no separate x86_64/armeabi-v7a release channel
+      # to justify shipping the extra ABIs' native code weight.
+      - name: Build Android APK (arm64)
         if: inputs.platform == 'android'
-        run: flutter build apk --release
+        run: flutter build apk --release --target-platform android-arm64
+
+      # Named after the tag/ref, short commit sha, and arch, e.g.
+      # semitone-web-v1.2.3-abc1234-arm64.apk, so the file is
+      # self-identifying once downloaded from a GitHub release rather than
+      # a bare "app-release.apk". workflow_dispatch runs (not a tag push)
+      # fall back to "dev" since GITHUB_REF_NAME would otherwise be a
+      # branch name there.
+      - name: Rename Android release APK
+        if: inputs.platform == 'android'
+        run: |
+          VERSION="dev"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            VERSION="$GITHUB_REF_NAME"
+          fi
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          mv build/app/outputs/flutter-apk/app-release.apk \
+             "build/app/outputs/flutter-apk/semitone-web-${VERSION}-${SHORT_SHA}-arm64.apk"
 
       # No Apple signing certificate or provisioning profile is configured
       # yet (that's needed for App Store distribution, added later), so

@@ -1,0 +1,56 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Cancel a stale in-flight run for this PR when a newer push arrives.
+# Shares its group name with pull-request-cleanup.yml so a close event
+# queues behind an in-progress run instead of racing it.
+concurrency:
+  group: pr-preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test:
+    uses: ./.github/workflows/_test.yml
+
+  deploy:
+    needs: test
+    # Skip the preview for draft PRs from anyone but the repo owner — it
+    # publishes once the PR is either opened by the owner directly, or
+    # marked ready for review (the "I reviewed it" signal). A later push
+    # to an already-ready PR re-triggers this normally.
+    if: github.event.pull_request.draft == false || github.event.pull_request.author_association == 'OWNER'
+    uses: ./.github/workflows/_web-deploy.yml
+    with:
+      action: sync
+      pr_number: ${{ github.event.number }}
+    secrets:
+      ssh_host: ${{ secrets.SSH_HOST }}
+      ssh_port: ${{ secrets.SSH_PORT }}
+      ssh_username: ${{ secrets.SSH_USERNAME }}
+      ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      ssh_password: ${{ secrets.SSH_PASSWORD }}
+
+  comment:
+    # Runs whenever deploy did (this job is skipped for free when deploy
+    # is skipped by its own if:, since a skipped need skips its dependents
+    # by default).
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment preview URL on PR
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: pr-preview
+          message: |
+            ### 🚀 Preview deployed
+
+            ${{ needs.deploy.outputs.url }}
+
+            Updated from ${{ github.sha }}.

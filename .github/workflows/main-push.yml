@@ -1,0 +1,48 @@
+name: Main push
+
+on:
+  push:
+    branches: [main]
+
+# Only the latest push to main matters; a stale in-flight deploy can be
+# dropped in favor of a newer one.
+concurrency:
+  group: main-push
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/_test.yml
+
+  # Deploys to the *root* of REMOTE_BASE_PATH, the same host and base path
+  # that PR previews live under (as REMOTE_BASE_PATH/pr-<N>/) — omitting
+  # pr_number here is what makes _web-deploy.yml target the root and
+  # exclude those pr-<N>/ subfolders from its --delete pass.
+  deploy:
+    needs: test
+    uses: ./.github/workflows/_web-deploy.yml
+    with:
+      action: sync
+    secrets:
+      ssh_host: ${{ secrets.SSH_HOST }}
+      ssh_port: ${{ secrets.SSH_PORT }}
+      ssh_username: ${{ secrets.SSH_USERNAME }}
+      ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      ssh_password: ${{ secrets.SSH_PASSWORD }}
+
+  summary:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record deploy summary
+        run: |
+          {
+            echo "### 🚀 Deployed to production"
+            echo ""
+            echo "${{ needs.deploy.outputs.url }}"
+            echo ""
+            echo "Deployed from ${{ github.sha }}."
+          } >> "$GITHUB_STEP_SUMMARY"

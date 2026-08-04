@@ -1,0 +1,27 @@
+name: PR Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+# Shares its group name with pull-request.yml so this queues behind an
+# in-progress deploy for the same PR instead of racing it.
+concurrency:
+  group: pr-preview-${{ github.event.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    uses: ./.github/workflows/_web-deploy.yml
+    with:
+      action: delete
+      pr_number: ${{ github.event.number }}
+    secrets:
+      ssh_host: ${{ secrets.SSH_HOST }}
+      ssh_port: ${{ secrets.SSH_PORT }}
+      ssh_username: ${{ secrets.SSH_USERNAME }}
+      ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      ssh_password: ${{ secrets.SSH_PASSWORD }}
