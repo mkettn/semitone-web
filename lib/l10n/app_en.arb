@@ -72,6 +72,8 @@
   "positionColumnHeader": "Position (cents)",
   "noDegreesYet": "No tone heights defined yet.\nTap + to add one.",
   "addToneTooltip": "Add a new tone",
+  "playToneTooltip": "Play this tone",
+  "stopToneTooltip": "Stop",
   "setAsRootTooltip": "Set as root",
   "duplicateToneTooltip": "Duplicate (splits this wedge)",
   "deleteTooltip": "Delete",

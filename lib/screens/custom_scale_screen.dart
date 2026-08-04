@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
@@ -5,6 +7,7 @@ import '../models/scale_degree.dart';
 import '../models/scale_presets.dart';
 import '../models/tuning_scale.dart';
 import '../services/settings_service.dart';
+import '../services/tone_player.dart';
 import '../theme/semitone_theme.dart';
 import '../widgets/scale_cake_chart.dart';
 
@@ -47,6 +50,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   late TextEditingController _nameController;
   late TextEditingController _rootOctaveController;
   late TextEditingController _baseFrequencyController;
+  final _tonePlayer = TonePlayer();
   int? _selectedIndex;
 
   @override
@@ -61,7 +65,10 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
         TextEditingController(text: _scale.rootOctave.toString());
     _baseFrequencyController =
         TextEditingController(text: _formatHz(_scale.baseFrequency));
+    _tonePlayer.addListener(_onTonePlayerChanged);
   }
+
+  void _onTonePlayerChanged() => setState(() {});
 
   String _formatHz(double hz) =>
       hz == hz.roundToDouble() ? hz.toStringAsFixed(0) : hz.toStringAsFixed(2);
@@ -71,6 +78,8 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
     _nameController.dispose();
     _rootOctaveController.dispose();
     _baseFrequencyController.dispose();
+    _tonePlayer.removeListener(_onTonePlayerChanged);
+    _tonePlayer.dispose();
     super.dispose();
   }
 
@@ -79,6 +88,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   }
 
   void _addDegree() {
+    _tonePlayer.stop();
     final degrees = [
       ..._scale.degrees,
       const ScaleDegree(name: 'New', cents: 0),
@@ -93,6 +103,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   /// wedge and the next tone's, splitting that slice of the cake in two.
   /// The user can then drag either copy's boundary to redraw the split.
   void _duplicateDegree(int index) {
+    _tonePlayer.stop();
     final degrees = _scale.degrees;
     final n = degrees.length;
     final current = degrees[index];
@@ -109,6 +120,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   }
 
   void _removeDegree(int index) {
+    _tonePlayer.stop();
     final degrees = [..._scale.degrees]..removeAt(index);
     final newRoot = _scale.rootIndex >= degrees.length
         ? (degrees.isEmpty ? 0 : degrees.length - 1)
@@ -121,6 +133,9 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   }
 
   void _updateDegree(int index, ScaleDegree updated) {
+    // The row's pitch may have just changed — stop rather than keep
+    // playing a now-stale frequency.
+    if (_tonePlayer.isPlaying(index)) _tonePlayer.stop();
     final degrees = [..._scale.degrees];
     degrees[index] = updated;
     setState(() {
@@ -137,6 +152,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
   }
 
   Future<void> _resetToDefault() async {
+    _tonePlayer.stop();
     final presets = await loadPresetScales();
     final def = presets.firstWhere(
       (s) => s.name == 'Chromatic',
@@ -259,7 +275,7 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
                   flex: 2,
                   child: Text(l10n.positionColumnHeader, style: const TextStyle(color: SemitoneColors.grey4)),
                 ),
-                const SizedBox(width: 136),
+                const SizedBox(width: 192),
               ],
             ),
           ),
@@ -278,16 +294,21 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
           else
             ...List.generate(degrees.length, (index) {
               final degree = degrees[index];
+              final rootCents = degrees[_scale.rootIndex].cents;
+              final frequency =
+                  _scale.baseFrequency * math.pow(2, (degree.cents - rootCents) / 1200);
               return _DegreeRow(
                 key: ValueKey('$index-${degree.name}'),
                 degree: degree,
                 isRoot: _scale.rootIndex == index,
                 isSelected: _selectedIndex == index,
+                isPlaying: _tonePlayer.isPlaying(index),
                 onTap: () => setState(() => _selectedIndex = index),
                 onChanged: (d) => _updateDegree(index, d),
                 onSetRoot: () => _setRoot(index),
                 onDuplicate: () => _duplicateDegree(index),
                 onDelete: () => _removeDegree(index),
+                onTogglePlay: () => _tonePlayer.toggle(index, frequency),
               );
             }),
           const SizedBox(height: 80),
@@ -308,21 +329,25 @@ class _DegreeRow extends StatefulWidget {
     required this.degree,
     required this.isRoot,
     required this.isSelected,
+    required this.isPlaying,
     required this.onTap,
     required this.onChanged,
     required this.onSetRoot,
     required this.onDuplicate,
     required this.onDelete,
+    required this.onTogglePlay,
   });
 
   final ScaleDegree degree;
   final bool isRoot;
   final bool isSelected;
+  final bool isPlaying;
   final VoidCallback onTap;
   final ValueChanged<ScaleDegree> onChanged;
   final VoidCallback onSetRoot;
   final VoidCallback onDuplicate;
   final VoidCallback onDelete;
+  final VoidCallback onTogglePlay;
 
   @override
   State<_DegreeRow> createState() => _DegreeRowState();
@@ -397,9 +422,21 @@ class _DegreeRowState extends State<_DegreeRow> {
               ),
             ),
             SizedBox(
-              width: 136,
+              width: 192,
               child: Row(
                 children: [
+                  IconButton(
+                    icon: Icon(
+                      widget.isPlaying ? Icons.stop : Icons.play_arrow,
+                    ),
+                    color: widget.isPlaying
+                        ? SemitoneColors.blue
+                        : SemitoneColors.grey4,
+                    tooltip: widget.isPlaying
+                        ? l10n.stopToneTooltip
+                        : l10n.playToneTooltip,
+                    onPressed: widget.onTogglePlay,
+                  ),
                   IconButton(
                     icon: Icon(
                       widget.isRoot ? Icons.star : Icons.star_border,
