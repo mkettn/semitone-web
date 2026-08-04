@@ -31,6 +31,12 @@ jobs:
   build:
     # iOS builds require Xcode, so only macOS runners can produce one.
     runs-on: ${{ inputs.platform == 'ios' && 'macos-latest' || 'ubuntu-latest' }}
+    # `secrets` isn't a recognized context inside `if:` conditions — only
+    # `env`, `github`, `job`, `steps`, `runner`, and `vars` are. Mirroring
+    # the one secret we need to branch on into env here is what makes the
+    # step below able to check whether it was set.
+    env:
+      HAS_ANDROID_KEYSTORE: ${{ secrets.android_keystore_base64 != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -45,7 +51,7 @@ jobs:
         run: flutter pub get
 
       - name: Configure Android release signing
-        if: inputs.platform == 'android' && secrets.android_keystore_base64 != ''
+        if: inputs.platform == 'android' && env.HAS_ANDROID_KEYSTORE == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.android_keystore_base64 }}
         run: |
