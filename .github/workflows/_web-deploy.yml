@@ -24,13 +24,22 @@ on:
         required: false
     outputs:
       url:
-        value: ${{ jobs.deploy.outputs.url }}
+        value: ${{ jobs.compute.outputs.url }}
 
 jobs:
-  deploy:
+  # A job that receives secrets has *all* of its outputs silently dropped
+  # by GitHub's secret-masking guard ("Skip output '<name>' since it may
+  # contain secret"), even outputs with nothing to do with those secrets —
+  # url ended up empty in PR comments/summaries for exactly that reason
+  # when this used to live in the deploy job below. Keeping compute
+  # secrets-free is what lets url actually reach callers.
+  compute:
     runs-on: ubuntu-latest
     outputs:
       url: ${{ steps.compute.outputs.url }}
+      base_href: ${{ steps.compute.outputs.base_href }}
+      remote_dir: ${{ steps.compute.outputs.remote_dir }}
+      exclude_regex: ${{ steps.compute.outputs.exclude_regex }}
     steps:
       # PREVIEW_BASE_URL is the public site (e.g. https://previews.example.com),
       # never SSH_HOST — the two may point at completely different hostnames.
@@ -81,6 +90,10 @@ jobs:
             echo "base_href=${base_path%/}/" >> "$GITHUB_OUTPUT"
           fi
 
+  deploy:
+    needs: compute
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout
         if: inputs.action == 'sync'
         uses: actions/checkout@v7
@@ -99,7 +112,7 @@ jobs:
       - name: Build web
         if: inputs.action == 'sync'
         run: |
-          flutter build web --release --base-href "${{ steps.compute.outputs.base_href }}"
+          flutter build web --release --base-href "${{ needs.compute.outputs.base_href }}"
 
       - name: Install lftp
         run: |
@@ -160,11 +173,11 @@ jobs:
           PORT: ${{ steps.ssh_auth.outputs.port }}
           SSH_HOST: ${{ secrets.ssh_host }}
           SSH_USERNAME: ${{ secrets.ssh_username }}
-          REMOTE_DIR: ${{ steps.compute.outputs.remote_dir }}
+          REMOTE_DIR: ${{ needs.compute.outputs.remote_dir }}
         run: |
           EXCLUDE=""
-          if [ -n "${{ steps.compute.outputs.exclude_regex }}" ]; then
-            EXCLUDE="-x ${{ steps.compute.outputs.exclude_regex }}"
+          if [ -n "${{ needs.compute.outputs.exclude_regex }}" ]; then
+            EXCLUDE="-x ${{ needs.compute.outputs.exclude_regex }}"
           fi
           # No quotes around $CONNECT_PROGRAM: lftp's `set` takes the rest of
           # the line as the literal value, quotes included — wrapping it in
@@ -188,7 +201,7 @@ jobs:
           PORT: ${{ steps.ssh_auth.outputs.port }}
           SSH_HOST: ${{ secrets.ssh_host }}
           SSH_USERNAME: ${{ secrets.ssh_username }}
-          REMOTE_DIR: ${{ steps.compute.outputs.remote_dir }}
+          REMOTE_DIR: ${{ needs.compute.outputs.remote_dir }}
         run: |
           set +e
           lftp -e "

@@ -58,6 +58,8 @@
   "positionColumnHeader": "Position (Cent)",
   "noDegreesYet": "Noch keine Tonstufen definiert.\nTippen Sie auf +, um eine hinzuzufügen.",
   "addToneTooltip": "Neuen Ton hinzufügen",
+  "playToneTooltip": "Diesen Ton abspielen",
+  "stopToneTooltip": "Stoppen",
   "setAsRootTooltip": "Als Grundton festlegen",
   "duplicateToneTooltip": "Duplizieren (teilt dieses Segment)",
   "deleteTooltip": "Löschen",

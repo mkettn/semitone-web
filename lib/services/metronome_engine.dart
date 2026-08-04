@@ -1,10 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+
+import 'wav_synth.dart';
 
 /// Drives a simple metronome, synthesizing its own click sounds (short sine
 /// bursts) so the app doesn't depend on bundled audio assets.
@@ -94,40 +95,7 @@ class MetronomeEngine extends ChangeNotifier {
       final sample = math.sin(2 * math.pi * frequency * t) * envelope;
       pcm[i] = (sample * 32000).round().clamp(-32768, 32767);
     }
-    return _wavBytes(pcm, sampleRate);
-  }
-
-  Uint8List _wavBytes(Int16List pcm, int sampleRate) {
-    final dataLength = pcm.lengthInBytes;
-    final buffer = BytesBuilder();
-
-    void writeString(String s) => buffer.add(ascii.encode(s));
-    void writeUint32(int v) {
-      final b = ByteData(4)..setUint32(0, v, Endian.little);
-      buffer.add(b.buffer.asUint8List());
-    }
-
-    void writeUint16(int v) {
-      final b = ByteData(2)..setUint16(0, v, Endian.little);
-      buffer.add(b.buffer.asUint8List());
-    }
-
-    writeString('RIFF');
-    writeUint32(36 + dataLength);
-    writeString('WAVE');
-    writeString('fmt ');
-    writeUint32(16);
-    writeUint16(1); // PCM
-    writeUint16(1); // mono
-    writeUint32(sampleRate);
-    writeUint32(sampleRate * 2); // byte rate
-    writeUint16(2); // block align
-    writeUint16(16); // bits per sample
-    writeString('data');
-    writeUint32(dataLength);
-    buffer.add(pcm.buffer.asUint8List());
-
-    return buffer.toBytes();
+    return pcmToWavBytes(pcm, sampleRate);
   }
 
   @override
