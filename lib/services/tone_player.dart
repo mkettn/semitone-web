@@ -1,6 +1,3 @@
-import 'dart:math' as math;
-import 'dart:typed_data';
-
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
@@ -27,7 +24,7 @@ class TonePlayer extends ChangeNotifier {
     if (_playingKey != null) await _fadeOutAndStop();
     await _player.setVolume(1.0);
     await _player.setReleaseMode(ReleaseMode.loop);
-    await _player.setSourceBytes(_toneWav(frequencyHz));
+    await _player.setSourceBytes(pcmToWavBytes(loopingSinePcm(frequencyHz), 44100));
     await _player.resume();
     _playingKey = key;
     notifyListeners();
@@ -50,23 +47,6 @@ class TonePlayer extends ChangeNotifier {
       await Future.delayed(const Duration(milliseconds: 6));
     }
     await _player.stop();
-  }
-
-  /// Synthesizes a whole number of cycles of a sine wave at [frequency],
-  /// so the buffer starts and ends at a zero crossing with matching slope
-  /// — [ReleaseMode.loop] repeats it seamlessly, with no click at the seam.
-  Uint8List _toneWav(double frequency) {
-    const sampleRate = 44100;
-    const targetSeconds = 0.5;
-    final cycles = math.max(1, (frequency * targetSeconds).round());
-    final numSamples = (sampleRate * cycles / frequency).round();
-    final pcm = Int16List(numSamples);
-    for (var i = 0; i < numSamples; i++) {
-      final t = i / sampleRate;
-      final sample = math.sin(2 * math.pi * frequency * t);
-      pcm[i] = (sample * 26000).round().clamp(-32768, 32767);
-    }
-    return pcmToWavBytes(pcm, sampleRate);
   }
 
   @override
