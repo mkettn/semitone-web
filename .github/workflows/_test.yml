@@ -56,8 +56,17 @@ jobs:
           fi
           dart format --output=none --set-exit-if-changed "${files[@]}"
 
+      # --branch-coverage adds BRDA: records to lcov.info so genhtml
+      # reports real branch data instead of "no data found" — without it,
+      # `flutter test --coverage` only emits per-line hit counts (DA:),
+      # which can't distinguish "this line ran" from "every branch inside
+      # it ran". There's no equivalent --function-coverage flag exposed by
+      # the flutter test CLI (the underlying package:coverage library
+      # supports it, but flutter test doesn't surface it), so function
+      # coverage stays unavailable regardless — genhtml will keep
+      # reporting "no data found" for functions specifically.
       - name: Test
-        run: flutter test --concurrency=1 --coverage
+        run: flutter test --concurrency=1 --coverage --branch-coverage
 
       # genhtml (part of the lcov apt package) isn't preinstalled on
       # ubuntu-latest, but zgosalvez/github-actions-report-lcov shells out
