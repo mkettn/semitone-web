@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../services/metronome_engine.dart';
 import '../services/settings_service.dart';
 import '../theme/semitone_theme.dart';
 import 'metronome_screen.dart';
@@ -12,45 +13,85 @@ import 'tuner_screen.dart';
 /// settings gear). The title is a live dropdown for switching the tuner's
 /// active scale; creating/editing/deleting/exporting/importing scales
 /// lives under Settings -> My scales.
-class HomeScreen extends StatelessWidget {
+///
+/// Owns the [MetronomeEngine] itself (rather than [MetronomeScreen]
+/// creating and disposing its own) so it survives switching tabs — the
+/// TabBarView's PageView disposes off-screen tab content, which used to
+/// tear down the engine's Timer the moment you left the Metronome tab,
+/// regardless of [SettingsService.keepTick]. That setting now does what
+/// it says: switching away from the Metronome tab stops the engine only
+/// when it's off; when it's on, the engine (owned up here) just keeps
+/// running underneath whichever tab is showing.
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.settings});
 
   final SettingsService settings;
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  static const _metronomeTabIndex = 1;
+
+  late final TabController _tabController;
+  final _metronomeEngine = MetronomeEngine();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this)
+      ..addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (_tabController.index == _metronomeTabIndex) return;
+    if (widget.settings.keepTick) return;
+    _metronomeEngine.stop();
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    _metronomeEngine.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: _ScaleTitleDropdown(settings: settings),
-          bottom: TabBar(
-            tabs: [
-              Tab(text: l10n.tabTuner),
-              Tab(text: l10n.tabMetronome),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: _ScaleTitleDropdown(settings: widget.settings),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: l10n.tabTuner),
+            Tab(text: l10n.tabMetronome),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: l10n.settingsTooltip,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => SettingsScreen(settings: widget.settings),
+                ),
+              );
+            },
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings),
-              tooltip: l10n.settingsTooltip,
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => SettingsScreen(settings: settings),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-        body: TabBarView(
-          children: [
-            TunerScreen(settings: settings),
-            const MetronomeScreen(),
-          ],
-        ),
+        ],
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          TunerScreen(settings: widget.settings),
+          MetronomeScreen(engine: _metronomeEngine),
+        ],
       ),
     );
   }
