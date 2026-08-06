@@ -1,16 +1,20 @@
 name: Dependency vulnerability scan
 
-# Runs on any PR touching the lockfile/pubspec (new or bumped deps are
-# exactly when a known-vulnerable version could sneak in), plus a weekly
-# schedule to catch vulnerabilities newly disclosed against deps we
-# already depend on, without needing a code change to trigger a check.
+# PR-only, scoped to changes that could actually introduce a
+# known-vulnerable version: new or bumped deps. Deliberately no
+# schedule — Dependabot security alerts already continuously watch
+# already-merged dependencies for newly-disclosed vulnerabilities in
+# the background, so a periodic re-scan here would just duplicate
+# that. What Dependabot alerts can't do is block a merge: they react
+# after the fact with their own follow-up PR, they don't gate the PR
+# that introduced the bad version in the first place. That's the one
+# thing this workflow is here for, so it only needs to run where it
+# can actually do that — on the PR itself.
 on:
   pull_request:
     paths:
       - pubspec.yaml
       - pubspec.lock
-  schedule:
-    - cron: "0 6 * * 1"
   workflow_dispatch:
 
 permissions:
