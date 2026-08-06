@@ -16,8 +16,14 @@ permissions:
   pull-requests: write
 
 jobs:
+  # Runs analyze, the changed-files format check (scoped to this PR's
+  # diff), tests, and the web build all in one job/runner — they're all
+  # cheap, all ubuntu-latest, and gain nothing from separate VMs beyond
+  # duplicated checkout/Flutter-setup overhead.
   test:
     uses: ./.github/workflows/_test.yml
+    with:
+      base_sha: ${{ github.event.pull_request.base.sha }}
 
   deploy:
     needs: test

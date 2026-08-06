@@ -69,6 +69,25 @@ flutter config --enable-linux-desktop
 flutter build linux --release
 ```
 
+## Git hooks
+
+A `pre-commit` hook lives in `.githooks/` (checked into the repo, unlike
+`.git/hooks/`) and runs `flutter analyze` plus a `dart format
+--set-exit-if-changed` check scoped to just the `.dart` files staged in
+that commit. It won't touch files you haven't staged, so it won't flag the
+codebase's existing formatting drift. CI runs the same three checks
+(analyze, scoped format, test) on every PR regardless, so the hook is
+purely a faster local heads-up, not a substitute.
+
+Point git at it once per clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+This is a local git config setting, not something the repo can enforce on
+its own — every contributor needs to run it after cloning.
+
 ## Project layout
 
 ```

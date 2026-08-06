@@ -2,6 +2,15 @@ name: _ Flutter test
 
 on:
   workflow_call:
+    inputs:
+      base_sha:
+        description: >-
+          Commit SHA to diff against for the changed-files format check
+          (typically a PR's base). Omit to skip the format check entirely —
+          pushes to main and release builds have no meaningful "this run's
+          diff" to scope it to.
+        required: false
+        type: string
 
 jobs:
   test:
@@ -9,6 +18,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Unconditional full history rather than making this depend on
+          # base_sha: a "0 when base_sha is set, else 1" ternary written as
+          # `cond && 0 || 1` is a footgun in GitHub Actions expressions the
+          # same way it is in JS — 0 is falsy, so `true && 0` becomes `0`,
+          # and `0 || 1` then evaluates to 1 regardless of cond. That bug
+          # silently made the format check below diff against a commit
+          # that was never fetched (shallow depth 1), so it always found
+          # "no changed files" instead of ever actually checking anything.
+          # The full clone costs well under a second for this repo's size.
+          fetch-depth: 0
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -22,5 +42,43 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
+      # Only checks files this run's diff actually touches, not the whole
+      # tree — the existing codebase has pre-existing `dart format` drift
+      # nobody's bulk-reformatted, and gating on all of it here would fail
+      # runs for reasons unrelated to their own changes.
+      - name: Check formatting of changed files
+        if: inputs.base_sha != ''
+        run: |
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR "${{ inputs.base_sha }}"...HEAD -- '*.dart')
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No changed Dart files."
+            exit 0
+          fi
+          dart format --output=none --set-exit-if-changed "${files[@]}"
+
       - name: Test
-        run: flutter test --concurrency=1
+        run: flutter test --concurrency=1 --coverage
+
+      # Fails the PR if line coverage drops below 50%. Replaces an earlier
+      # attempt at a readable PR-comment coverage table
+      # (zgosalvez/github-actions-report-lcov): that worked fine for line
+      # coverage, but chasing branch coverage alongside it hit a dead end —
+      # Dart's lcov output never emits the BRF:/BRH: summary counters lcov
+      # 2.x's tooling needs to report a branch percentage, even once real
+      # BRDA: records were being collected. very_good_coverage only reads
+      # line data (LF:/LH:), which Dart's lcov output always has, so it
+      # sidesteps that problem entirely — at the cost of no PR comment,
+      # just pass/fail. Only meaningful on a pull_request run.
+      - name: Enforce coverage threshold
+        if: github.event_name == 'pull_request'
+        uses: VeryGoodOpenSource/very_good_coverage@v3
+        with:
+          path: coverage/lcov.info
+          min_coverage: 50
+
+      # Runs unconditionally (no draft-PR skip, unlike the web preview
+      # deploy in _web-deploy.yml), so a web-incompatible change gets
+      # caught here even on a draft PR, well before someone marks it ready
+      # for review and only then discovers the preview deploy fails.
+      - name: Build web
+        run: flutter build web --release

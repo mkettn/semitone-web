@@ -1,0 +1,44 @@
+name: Dependency vulnerability scan
+
+# PR-only, scoped to changes that could actually introduce a
+# known-vulnerable version: new or bumped deps. Deliberately no
+# schedule — Dependabot security alerts already continuously watch
+# already-merged dependencies for newly-disclosed vulnerabilities in
+# the background, so a periodic re-scan here would just duplicate
+# that. What Dependabot alerts can't do is block a merge: they react
+# after the fact with their own follow-up PR, they don't gate the PR
+# that introduced the bad version in the first place. That's the one
+# thing this workflow is here for, so it only needs to run where it
+# can actually do that — on the PR itself.
+on:
+  pull_request:
+    paths:
+      - pubspec.yaml
+      - pubspec.lock
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  osv-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Step-level action rather than the OSV-Scanner reusable workflow:
+      # the reusable workflow uploads SARIF to the code-scanning tab, which
+      # requires GitHub Advanced Security on a private repo. This just
+      # scans pubspec.lock and fails the job on a known vulnerability.
+      #
+      # Pinned to a specific release tag, not a floating major version:
+      # unlike actions/checkout or actions/upload-artifact, this action's
+      # repo publishes only patch-level tags (v2.3.8, v2.3.5, ...) with no
+      # "v2" alias — using "@v2" fails outright ("unable to find version
+      # v2"), it was never a valid ref. Bump this tag manually as needed.
+      - name: Run OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+        with:
+          scan-args: |-
+            --lockfile=pubspec.lock
