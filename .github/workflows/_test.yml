@@ -2,6 +2,15 @@ name: _ Flutter test
 
 on:
   workflow_call:
+    inputs:
+      base_sha:
+        description: >-
+          Commit SHA to diff against for the changed-files format check
+          (typically a PR's base). Omit to skip the format check entirely —
+          pushes to main and release builds have no meaningful "this run's
+          diff" to scope it to.
+        required: false
+        type: string
 
 jobs:
   test:
@@ -9,6 +18,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Needs real history to diff against base_sha; a shallow clone
+          # only has the tip commit. Skip the extra fetch cost when no
+          # base_sha was passed, since nothing here will diff anyway.
+          fetch-depth: ${{ inputs.base_sha != '' && 0 || 1 }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -22,6 +36,20 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
+      # Only checks files this run's diff actually touches, not the whole
+      # tree — the existing codebase has pre-existing `dart format` drift
+      # nobody's bulk-reformatted, and gating on all of it here would fail
+      # runs for reasons unrelated to their own changes.
+      - name: Check formatting of changed files
+        if: inputs.base_sha != ''
+        run: |
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR "${{ inputs.base_sha }}"...HEAD -- '*.dart')
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No changed Dart files."
+            exit 0
+          fi
+          dart format --output=none --set-exit-if-changed "${files[@]}"
+
       - name: Test
         run: flutter test --concurrency=1 --coverage
 
@@ -32,9 +60,9 @@ jobs:
           path: coverage/lcov.info
           if-no-files-found: error
 
-      # Runs unconditionally (this job has no draft-PR skip, unlike the web
-      # preview deploy in _web-deploy.yml), so a web-incompatible change
-      # gets caught here even on a draft PR, well before someone marks it
-      # ready for review and only then discovers the preview deploy fails.
+      # Runs unconditionally (no draft-PR skip, unlike the web preview
+      # deploy in _web-deploy.yml), so a web-incompatible change gets
+      # caught here even on a draft PR, well before someone marks it ready
+      # for review and only then discovers the preview deploy fails.
       - name: Build web
         run: flutter build web --release
