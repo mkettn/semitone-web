@@ -56,43 +56,25 @@ jobs:
           fi
           dart format --output=none --set-exit-if-changed "${files[@]}"
 
-      # --branch-coverage adds BRDA: records to lcov.info so genhtml
-      # reports real branch data instead of "no data found" — without it,
-      # `flutter test --coverage` only emits per-line hit counts (DA:),
-      # which can't distinguish "this line ran" from "every branch inside
-      # it ran". There's no equivalent --function-coverage flag exposed by
-      # the flutter test CLI (the underlying package:coverage library
-      # supports it, but flutter test doesn't surface it), so function
-      # coverage stays unavailable regardless — genhtml will keep
-      # reporting "no data found" for functions specifically.
       - name: Test
-        run: flutter test --concurrency=1 --coverage --branch-coverage
+        run: flutter test --concurrency=1 --coverage
 
-      # genhtml (part of the lcov apt package) isn't preinstalled on
-      # ubuntu-latest, but zgosalvez/github-actions-report-lcov shells out
-      # to it unconditionally to build the coverage summary — without this
-      # it fails with "Unable to locate executable file: genhtml".
-      - name: Install lcov (genhtml)
+      # Fails the PR if line coverage drops below 50%. Replaces an earlier
+      # attempt at a readable PR-comment coverage table
+      # (zgosalvez/github-actions-report-lcov): that worked fine for line
+      # coverage, but chasing branch coverage alongside it hit a dead end —
+      # Dart's lcov output never emits the BRF:/BRH: summary counters lcov
+      # 2.x's tooling needs to report a branch percentage, even once real
+      # BRDA: records were being collected. very_good_coverage only reads
+      # line data (LF:/LH:), which Dart's lcov output always has, so it
+      # sidesteps that problem entirely — at the cost of no PR comment,
+      # just pass/fail. Only meaningful on a pull_request run.
+      - name: Enforce coverage threshold
         if: github.event_name == 'pull_request'
-        run: sudo apt-get update && sudo apt-get install -y lcov
-
-      # Posts a per-file coverage table as a PR comment, updated in place on
-      # later pushes (same sticky-comment pattern as the preview-deploy URL
-      # in pull-request.yml) — readable directly on GitHub, unlike the flat
-      # lcov.info artifact this replaced, which nobody was downloading.
-      # Only meaningful on a pull_request run: main-push and release builds
-      # have no PR to comment on. Needs pull-requests: write, which
-      # pull-request.yml already grants at the workflow level; this job has
-      # no permissions: block of its own, so it inherits that from the
-      # caller (main-push.yml/release.yml don't grant it, but the `if:`
-      # below means the step never runs there to need it).
-      - name: Report code coverage
-        if: github.event_name == 'pull_request'
-        uses: zgosalvez/github-actions-report-lcov@v7
+        uses: VeryGoodOpenSource/very_good_coverage@v3
         with:
-          coverage-files: coverage/lcov.info
-          github-token: ${{ github.token }}
-          update-comment: true
+          path: coverage/lcov.info
+          min_coverage: 50
 
       # Runs unconditionally (no draft-PR skip, unlike the web preview
       # deploy in _web-deploy.yml), so a web-incompatible change gets
