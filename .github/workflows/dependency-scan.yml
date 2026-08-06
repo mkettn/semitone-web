@@ -31,8 +31,14 @@ jobs:
       # the reusable workflow uploads SARIF to the code-scanning tab, which
       # requires GitHub Advanced Security on a private repo. This just
       # scans pubspec.lock and fails the job on a known vulnerability.
+      #
+      # Pinned to a specific release tag, not a floating major version:
+      # unlike actions/checkout or actions/upload-artifact, this action's
+      # repo publishes only patch-level tags (v2.3.8, v2.3.5, ...) with no
+      # "v2" alias — using "@v2" fails outright ("unable to find version
+      # v2"), it was never a valid ref. Bump this tag manually as needed.
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action/osv-scanner-action@v2
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
         with:
           scan-args: |-
             --lockfile=pubspec.lock
