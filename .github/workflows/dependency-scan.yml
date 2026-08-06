@@ -1,0 +1,34 @@
+name: Dependency vulnerability scan
+
+# Runs on any PR touching the lockfile/pubspec (new or bumped deps are
+# exactly when a known-vulnerable version could sneak in), plus a weekly
+# schedule to catch vulnerabilities newly disclosed against deps we
+# already depend on, without needing a code change to trigger a check.
+on:
+  pull_request:
+    paths:
+      - pubspec.yaml
+      - pubspec.lock
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  osv-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Step-level action rather than the OSV-Scanner reusable workflow:
+      # the reusable workflow uploads SARIF to the code-scanning tab, which
+      # requires GitHub Advanced Security on a private repo. This just
+      # scans pubspec.lock and fails the job on a known vulnerability.
+      - name: Run OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v2
+        with:
+          scan-args: |-
+            --lockfile=pubspec.lock

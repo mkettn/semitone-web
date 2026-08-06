@@ -23,4 +23,18 @@ jobs:
         run: flutter analyze
 
       - name: Test
-        run: flutter test --concurrency=1
+        run: flutter test --concurrency=1 --coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: error
+
+      # Runs unconditionally (this job has no draft-PR skip, unlike the web
+      # preview deploy in _web-deploy.yml), so a web-incompatible change
+      # gets caught here even on a draft PR, well before someone marks it
+      # ready for review and only then discovers the preview deploy fails.
+      - name: Build web
+        run: flutter build web --release

@@ -19,6 +19,35 @@ jobs:
   test:
     uses: ./.github/workflows/_test.yml
 
+  # Only checks files this PR actually touches, not the whole tree — the
+  # existing codebase has plenty of pre-existing `dart format` drift that
+  # nobody's opted to bulk-reformat, and gating on all of it here would
+  # fail every PR for reasons unrelated to its own diff.
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Check formatting of changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR "$BASE_SHA"...HEAD -- '*.dart')
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No changed Dart files."
+            exit 0
+          fi
+          dart format --output=none --set-exit-if-changed "${files[@]}"
+
   deploy:
     needs: test
     # Skip the preview for draft PRs from anyone but the repo owner — it
