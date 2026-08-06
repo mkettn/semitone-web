@@ -8,8 +8,8 @@ plugins {
 
 // Release signing, loaded from android/key.properties (gitignored — see
 // android/.gitignore). Absent locally and in CI unless the ANDROID_KEYSTORE_*
-// secrets are configured (see .github/workflows/reusable-flutter-build.yml),
-// in which case release builds fall back to the debug key below.
+// secrets are configured (see .github/workflows/_flutter-build.yml), in
+// which case release builds fall back to the debug key below.
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 val hasReleaseKeystore = keystorePropertiesFile.exists()
