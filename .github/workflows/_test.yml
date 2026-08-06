@@ -59,6 +59,14 @@ jobs:
       - name: Test
         run: flutter test --concurrency=1 --coverage
 
+      # genhtml (part of the lcov apt package) isn't preinstalled on
+      # ubuntu-latest, but zgosalvez/github-actions-report-lcov shells out
+      # to it unconditionally to build the coverage summary — without this
+      # it fails with "Unable to locate executable file: genhtml".
+      - name: Install lcov (genhtml)
+        if: github.event_name == 'pull_request'
+        run: sudo apt-get update && sudo apt-get install -y lcov
+
       # Posts a per-file coverage table as a PR comment, updated in place on
       # later pushes (same sticky-comment pattern as the preview-deploy URL
       # in pull-request.yml) — readable directly on GitHub, unlike the flat
