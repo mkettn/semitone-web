@@ -19,10 +19,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # Needs real history to diff against base_sha; a shallow clone
-          # only has the tip commit. Skip the extra fetch cost when no
-          # base_sha was passed, since nothing here will diff anyway.
-          fetch-depth: ${{ inputs.base_sha != '' && 0 || 1 }}
+          # Unconditional full history rather than making this depend on
+          # base_sha: a "0 when base_sha is set, else 1" ternary written as
+          # `cond && 0 || 1` is a footgun in GitHub Actions expressions the
+          # same way it is in JS — 0 is falsy, so `true && 0` becomes `0`,
+          # and `0 || 1` then evaluates to 1 regardless of cond. That bug
+          # silently made the format check below diff against a commit
+          # that was never fetched (shallow depth 1), so it always found
+          # "no changed files" instead of ever actually checking anything.
+          # The full clone costs well under a second for this repo's size.
+          fetch-depth: 0
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
