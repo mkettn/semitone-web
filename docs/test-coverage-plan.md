@@ -1,9 +1,9 @@
 # Test coverage: diagnosis and plan
 
-> **Status.** Causes ①, ③ and ⑤ are **done** — see "What landed" at the bottom.
-> Coverage went from **57.7% → 83.6%** overall, or **88.5%** as CI now measures
-> it (generated files excluded), and the test count from 42 to 120. Causes ②
-> (`scale_io`) and ④ (the two mic-facing screens) remain open.
+> **Status.** Causes ①, ②, ③ and ⑤ are **done** — see "What landed" at the
+> bottom. Coverage went from **57.7% → 84.8%** overall, or **89.6%** as CI now
+> measures it (generated files excluded), and the test count from 42 to 141.
+> Only cause ④ (the two mic-facing screens) remains open.
 
 Line coverage sat at **57.7%** (790 / 1368 lines, `flutter test --concurrency=1
 --coverage` on `main` @ `be96590`). This document explains *why* it was stuck
@@ -307,8 +307,8 @@ Ordered by payoff per unit of effort — each phase is independently shippable.
 |---|---|---|---|---|
 | 0 | Exclude `lib/l10n/**` from coverage (config only, no tests) | ~60% | — | **done** |
 | 1 | ③ engine extraction + tests (covers `pitch_detector` too) | ~72% | 72.4% | **done** |
-| 2 | UI tests 1–13 (no refactor) | ~80% | 88.5% | **done** |
-| 3 | Refactor ② `scale_io`, with tests | ~90% | | open |
+| 2 | UI tests over the editing surface (no refactor) | ~80% | 88.5% | **done** |
+| 3 | Refactor ② `scale_io` + import/export tests | ~90% | 89.6% | **done** |
 | 4 | Refactor ④ screens + UI tests 14–16 | ~94% | | open |
 
 Percentages are projections from the missed-line counts above, assuming the
@@ -352,18 +352,24 @@ hand them to a function; the fakes record calls rather than producing sound.
 
 ### Phase 2 — the UI tests
 
-All 13 that needed no production change, in `app_navigation_test.dart` (the
-shell and routing), `settings_screen_test.dart` and
-`custom_scale_screen_test.dart`.
+In `settings_screen_test.dart` and `custom_scale_screen_test.dart`: scale
+creation, duplication, deletion and the reset dialog; and in the editor,
+renaming, base frequency, root octave, add/duplicate/delete tone, the root
+star, cents normalization, and cake-chart wedge hit-testing.
 
 | File | Before | After |
 |---|---:|---:|
 | `screens/custom_scale_screen.dart` | 56% | **98%** |
 | `widgets/scale_cake_chart.dart` | 65% | **98%** |
-| `screens/settings_screen.dart` | 55% | **88%** |
+| `screens/settings_screen.dart` | 55% | **93%** |
 | `services/settings_service.dart` | 79% | **97%** |
-| `screens/home_screen.dart` | 88% | **98%** |
 | `models/scale_degree.dart` | 50% | **80%** |
+
+An earlier `app_navigation_test.dart` — walking Home → Settings →
+Calibration and asserting each screen's title appeared — was **removed**. It
+moved the coverage number without testing behaviour anyone relies on. Prefer
+tests that pin down a rule (a midpoint calculation, a wrap-around, a refusal)
+over ones that confirm a route still pushes.
 
 Two things worth knowing for anyone writing more of these:
 
@@ -376,3 +382,26 @@ Two things worth knowing for anyone writing more of these:
   the name, `+1` for the cents), because nothing in the tree distinguishes
   them. Adding `Key`s would make that sturdier and is worth doing next time
   the file is open anyway.
+
+### Phase 3 — import and export
+
+`scale_io.dart` went **0% → 74%**. It called `FilePicker.pickFiles` and
+`FileSaver.instance.saveFile` as statics, so nothing about importing or
+exporting could be tested — not even the parts that are pure logic, like
+rejecting a file that isn't a scale.
+
+Same shape as the audio seams: a `ScaleFileIo` interface (`save`, `pickJson`),
+a `PlatformScaleFileIo` that wraps the two plugins, and a fake for tests.
+`SettingsScreen` takes one, defaulting to the real thing. The pure parts —
+`encodeScaleJson`, `parseScaleJson`, `sanitizeFileName` — came out as
+top-level functions and are tested directly.
+
+What that buys, beyond the percentage: a round trip through export and back
+preserving every field, the fresh id on import that keeps re-importing from
+overwriting its own source, cancelling the picker being distinguished from
+failing, five separate kinds of not-a-scale file, a `rootIndex` past the end
+of the degree list getting clamped instead of blowing up later, and filename
+sanitization down to the fallback when nothing usable is left.
+
+The 9 lines still uncovered are `PlatformScaleFileIo` itself — the actual
+plugin calls, the same deliberate residue as the three audio adapters.
