@@ -134,8 +134,8 @@ class _CakePainter extends CustomPainter {
       // Label at the mid-angle of the wedge.
       final midAngle = startAngle + sweep / 2;
       final labelRadius = radius * 0.68;
-      final labelPos = center +
-          Offset(math.cos(midAngle), math.sin(midAngle)) * labelRadius;
+      final labelPos =
+          center + Offset(math.cos(midAngle), math.sin(midAngle)) * labelRadius;
 
       final textPainter = TextPainter(
         text: TextSpan(
@@ -154,7 +154,7 @@ class _CakePainter extends CustomPainter {
       );
     }
 
-    // Center hole for a donut look + root marker.
+    // Center hole for a donut look.
     final holePaint = Paint()..color = SemitoneColors.black;
     canvas.drawCircle(center, radius * 0.22, holePaint);
     final holeStroke = Paint()
