@@ -69,12 +69,28 @@ jobs:
       # line data (LF:/LH:), which Dart's lcov output always has, so it
       # sidesteps that problem entirely — at the cost of no PR comment,
       # just pass/fail. Only meaningful on a pull_request run.
+      #
+      # `lib/l10n/app_localizations*.dart` is `flutter gen-l10n` output —
+      # gitignored, regenerated on every `pub get`, and nobody will ever
+      # hand-write a test for it. It contributed 175 lines (only 74 of
+      # them hit) to the denominator, with the German file sitting at 3.8%
+      # purely because tests run in English. Excluding it makes the number
+      # describe hand-written code.
       - name: Enforce coverage threshold
         if: github.event_name == 'pull_request'
         uses: VeryGoodOpenSource/very_good_coverage@v3
         with:
           path: coverage/lcov.info
-          min_coverage: 50
+          # Matched with minimatch (verified against the action's own
+          # index.js, not just its README): this excludes the three
+          # generated l10n files and nothing else.
+          exclude: '**/l10n/**'
+          # Ratcheted up from 50 as coverage lands. 50 against an actual
+          # 72% meant coverage could quietly fall 22 points before CI
+          # objected, which is not a floor so much as a formality. Raise
+          # this whenever a batch of tests lands; never lower it to make a
+          # red run go green.
+          min_coverage: 70
 
       # Runs unconditionally (no draft-PR skip, unlike the web preview
       # deploy in _web-deploy.yml), so a web-incompatible change gets

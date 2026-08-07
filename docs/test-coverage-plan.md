@@ -1,7 +1,12 @@
 # Test coverage: diagnosis and plan
 
-Line coverage sits at **57.7%** (790 / 1368 lines, `flutter test --concurrency=1
---coverage` on `main` @ `be96590`). This document explains *why* it's stuck
+> **Status.** Causes ③ and ⑤ are **done** — see "What landed" at the bottom.
+> Coverage went from **57.7% → 68.6%** overall, or **72.4%** as CI now measures
+> it (generated files excluded), and the test count from 42 to 90. Causes ①
+> (partly), ② and ④ remain open.
+
+Line coverage sat at **57.7%** (790 / 1368 lines, `flutter test --concurrency=1
+--coverage` on `main` @ `be96590`). This document explains *why* it was stuck
 there, which of that is a testing gap versus a **testability** gap in the source,
 and what to change to fix each.
 
@@ -11,9 +16,11 @@ no audio backend to point it at. The recurring theme below is the opposite move:
 pull the pure logic *out* of the code that touches the audio plugin, so the
 interesting parts can be tested as plain functions with no device at all.
 
-## Current state, per file
+## Baseline, per file
 
-Sorted by coverage. The right-hand column is the diagnosis, expanded on below.
+The state at diagnosis time, sorted by coverage; the right-hand column is the
+cause, expanded on below. Kept as the "before" picture — see "What landed" for
+current numbers on the files that have since moved.
 
 | File | Hit | Total | Miss | % | Why |
 |---|---:|---:|---:|---:|---|
@@ -296,17 +303,49 @@ production change; **14–16 depend on the refactors in ③ and ④**.
 
 Ordered by payoff per unit of effort — each phase is independently shippable.
 
-| Phase | Work | Est. total |
-|---|---|---|
-| 0 | Exclude `lib/l10n/**` from coverage (config only, no tests) | ~60% |
-| 1 | `pitch_detector` tests (no refactor) + ① odds and ends | ~66% |
-| 2 | UI tests 1–13 (no refactor) | ~78% |
-| 3 | Refactor ② `scale_io` + ③ engines, with their tests | ~86% |
-| 4 | Refactor ④ screens + UI tests 14–16 | ~90% |
+| Phase | Work | Est. total | |
+|---|---|---|---|
+| 0 | Exclude `lib/l10n/**` from coverage (config only, no tests) | ~60% | **done** |
+| 1 | ③ engine extraction + tests (covers `pitch_detector` too) | ~72% | **done** |
+| 2 | UI tests 1–13 (no refactor) | ~80% | open |
+| 3 | Refactor ② `scale_io`, with tests | ~83% | open |
+| 4 | Refactor ④ screens + UI tests 14–16 | ~88% | open |
 
 Percentages are projections from the missed-line counts above, assuming the
 tests land the lines they target; treat them as direction, not a contract.
 
 Raise `min_coverage` in `.github/workflows/_test.yml` as each phase lands, so
-the ratchet only ever goes up. It currently sits at 50 against an actual 57.7%,
-which means coverage could silently fall by 8 points before CI complains.
+the ratchet only ever goes up.
+
+## What landed
+
+Phases 0 and 1. Coverage **57.7% → 68.6%** (969 / 1412); as CI now measures it,
+excluding generated files, **72.4%** (895 / 1237). Tests: 42 → 90.
+
+| File | Before | After |
+|---|---:|---:|
+| `dsp/pitch_detector.dart` | 0% | **94%** |
+| `services/tuner_engine.dart` | 16% | **100%** |
+| `services/metronome_engine.dart` | 32% | **100%** |
+| `services/tone_player.dart` | 76% | **100%** |
+| `dsp/pitch_pipeline.dart` *(new)* | — | **100%** |
+
+Three seams were introduced, each a plain interface with a real implementation
+that wraps the plugin and a fake that tests inject: `AudioCapture` (the
+recorder), `ClickPlayer` (metronome clicks), `TonePlayback` (preview notes).
+`PitchPipeline` took over everything that used to live inside `TunerEngine`'s
+`stream.listen` callback — buffering, sample-rate correction, calibration,
+median smoothing — and knows nothing about plugins or streams.
+
+**`pitch_detector.dart` needed no test of its own.** Driving `PitchPipeline`
+with PCM bytes runs the FFT, autocorrelation and peak-picking as a side effect,
+which took it from 0% to 94% without a line of detector-specific test code — and
+tests it with more of the real path connected than a unit test would have.
+
+The residue is deliberate: `audio_capture.dart`, `click_player.dart` and
+`tone_playback.dart` sit at 25–44%, because the uncovered lines are the real
+plugin calls. That is the correct shape — roughly 33 lines of untestable
+adapter, instead of untestable code threaded through 150 lines of engine logic.
+
+No microphone is faked anywhere. Tests build PCM byte arrays with `sin()` and
+hand them to a function; the fakes record calls rather than producing sound.
