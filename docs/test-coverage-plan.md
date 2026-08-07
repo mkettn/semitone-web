@@ -2,7 +2,7 @@
 
 > **Status.** Causes ①, ②, ③ and ⑤ are **done** — see "What landed" at the
 > bottom. Coverage went from **57.7% → 84.8%** overall, or **89.6%** as CI now
-> measures it (generated files excluded), and the test count from 42 to 141.
+> measures it (generated files excluded), and the test count from 42 to 158.
 > Only cause ④ (the two mic-facing screens) remains open.
 
 Line coverage sat at **57.7%** (790 / 1368 lines, `flutter test --concurrency=1
@@ -352,10 +352,24 @@ hand them to a function; the fakes record calls rather than producing sound.
 
 ### Phase 2 — the UI tests
 
-In `settings_screen_test.dart` and `custom_scale_screen_test.dart`: scale
-creation, duplication, deletion and the reset dialog; and in the editor,
-renaming, base frequency, root octave, add/duplicate/delete tone, the root
-star, cents normalization, and cake-chart wedge hit-testing.
+**One fixture per feature.** A file per thing a user does, so a failure names
+the broken feature before you read a single assertion, and so there's an
+obvious place to add the next test:
+
+| Fixture | Feature |
+|---|---|
+| `scale_new_test.dart` | creating a scale |
+| `scale_edit_test.dart` | the scale editor |
+| `scale_duplicate_test.dart` | duplicating a scale |
+| `scale_delete_test.dart` | deleting a scale |
+| `scale_import_export_test.dart` | import/export, service and UI both |
+| `settings_reset_test.dart` | resetting settings |
+| `settings_screen_test.dart` | what's left: page layout, language, keep-tick |
+
+Shared setup lives in `test/support/scale_harness.dart` — not named
+`*_test.dart`, so `flutter test` treats it as a library rather than a suite
+with no tests in it. It holds the two pump helpers, the storage seeders,
+`threeToneScale()`, the degree-field finders, and `FakeScaleFileIo`.
 
 | File | Before | After |
 |---|---:|---:|
@@ -371,7 +385,14 @@ moved the coverage number without testing behaviour anyone relies on. Prefer
 tests that pin down a rule (a midpoint calculation, a wrap-around, a refusal)
 over ones that confirm a route still pushes.
 
-Two things worth knowing for anyone writing more of these:
+Three things worth knowing for anyone writing more of these:
+
+- **A test that asserts something is gone can pass because it was never
+  there.** `settings_reset_test.dart`'s dialog-dismissal test checks the
+  dialog is absent afterwards — which a dialog that never opened would
+  satisfy too. Its `openResetDialog` helper asserts the dialog opened, so the
+  later absence means something. Watch for this shape whenever an assertion
+  is `findsNothing`.
 
 - **The editor page needs a taller test surface.** Its content is one lazily
   built `ListView`, and at the default 800px height the cake chart and the
