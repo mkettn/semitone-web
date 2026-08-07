@@ -1,9 +1,9 @@
 # Test coverage: diagnosis and plan
 
-> **Status.** Causes ③ and ⑤ are **done** — see "What landed" at the bottom.
-> Coverage went from **57.7% → 68.6%** overall, or **72.4%** as CI now measures
-> it (generated files excluded), and the test count from 42 to 90. Causes ①
-> (partly), ② and ④ remain open.
+> **Status.** Causes ①, ③ and ⑤ are **done** — see "What landed" at the bottom.
+> Coverage went from **57.7% → 83.6%** overall, or **88.5%** as CI now measures
+> it (generated files excluded), and the test count from 42 to 120. Causes ②
+> (`scale_io`) and ④ (the two mic-facing screens) remain open.
 
 Line coverage sat at **57.7%** (790 / 1368 lines, `flutter test --concurrency=1
 --coverage` on `main` @ `be96590`). This document explains *why* it was stuck
@@ -303,13 +303,13 @@ production change; **14–16 depend on the refactors in ③ and ④**.
 
 Ordered by payoff per unit of effort — each phase is independently shippable.
 
-| Phase | Work | Est. total | |
-|---|---|---|---|
-| 0 | Exclude `lib/l10n/**` from coverage (config only, no tests) | ~60% | **done** |
-| 1 | ③ engine extraction + tests (covers `pitch_detector` too) | ~72% | **done** |
-| 2 | UI tests 1–13 (no refactor) | ~80% | open |
-| 3 | Refactor ② `scale_io`, with tests | ~83% | open |
-| 4 | Refactor ④ screens + UI tests 14–16 | ~88% | open |
+| Phase | Work | Est. total | Actual | |
+|---|---|---|---|---|
+| 0 | Exclude `lib/l10n/**` from coverage (config only, no tests) | ~60% | — | **done** |
+| 1 | ③ engine extraction + tests (covers `pitch_detector` too) | ~72% | 72.4% | **done** |
+| 2 | UI tests 1–13 (no refactor) | ~80% | 88.5% | **done** |
+| 3 | Refactor ② `scale_io`, with tests | ~90% | | open |
+| 4 | Refactor ④ screens + UI tests 14–16 | ~94% | | open |
 
 Percentages are projections from the missed-line counts above, assuming the
 tests land the lines they target; treat them as direction, not a contract.
@@ -349,3 +349,30 @@ adapter, instead of untestable code threaded through 150 lines of engine logic.
 
 No microphone is faked anywhere. Tests build PCM byte arrays with `sin()` and
 hand them to a function; the fakes record calls rather than producing sound.
+
+### Phase 2 — the UI tests
+
+All 13 that needed no production change, in `app_navigation_test.dart` (the
+shell and routing), `settings_screen_test.dart` and
+`custom_scale_screen_test.dart`.
+
+| File | Before | After |
+|---|---:|---:|
+| `screens/custom_scale_screen.dart` | 56% | **98%** |
+| `widgets/scale_cake_chart.dart` | 65% | **98%** |
+| `screens/settings_screen.dart` | 55% | **88%** |
+| `services/settings_service.dart` | 79% | **97%** |
+| `screens/home_screen.dart` | 88% | **98%** |
+| `models/scale_degree.dart` | 50% | **80%** |
+
+Two things worth knowing for anyone writing more of these:
+
+- **The editor page needs a taller test surface.** Its content is one lazily
+  built `ListView`, and at the default 800px height the cake chart and the
+  scale-level fields push every degree row but the first out of the viewport —
+  where it isn't merely invisible but never mounted, so finders don't see it
+  and taps land on nothing. `pumpEditor` sets a 1000×1600 surface.
+- **The degree rows' text fields are addressed by index** (`3 + row * 2` for
+  the name, `+1` for the cents), because nothing in the tree distinguishes
+  them. Adding `Key`s would make that sturdier and is worth doing next time
+  the file is open anyway.

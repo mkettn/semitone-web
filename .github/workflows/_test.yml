@@ -85,12 +85,12 @@ jobs:
           # index.js, not just its README): this excludes the three
           # generated l10n files and nothing else.
           exclude: '**/l10n/**'
-          # Ratcheted up from 50 as coverage lands. 50 against an actual
-          # 72% meant coverage could quietly fall 22 points before CI
-          # objected, which is not a floor so much as a formality. Raise
-          # this whenever a batch of tests lands; never lower it to make a
-          # red run go green.
-          min_coverage: 70
+          # Ratcheted up as coverage lands (50 -> 70 -> 85). The original
+          # 50 against an actual 72% meant coverage could quietly fall 22
+          # points before CI objected, which is not a floor so much as a
+          # formality. Raise this whenever a batch of tests lands; never
+          # lower it to make a red run go green.
+          min_coverage: 85
 
       # Runs unconditionally (no draft-PR skip, unlike the web preview
       # deploy in _web-deploy.yml), so a web-incompatible change gets
