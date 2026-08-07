@@ -8,8 +8,8 @@ plugins {
 
 // Release signing, loaded from android/key.properties (gitignored — see
 // android/.gitignore). Absent locally and in CI unless the ANDROID_KEYSTORE_*
-// secrets are configured (see .github/workflows/reusable-flutter-build.yml),
-// in which case release builds fall back to the debug key below.
+// secrets are configured (see .github/workflows/_flutter-build.yml), in
+// which case release builds fall back to the debug key below.
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 val hasReleaseKeystore = keystorePropertiesFile.exists()
@@ -28,10 +28,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "io.kettner.semitone_web"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

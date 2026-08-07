@@ -2,10 +2,9 @@
 # Fast local guard before a commit lands: analyze the whole project (cheap,
 # catches type errors/typos), and check formatting of only the .dart files
 # staged in *this* commit — not the whole tree, which has pre-existing
-# `dart format` drift nobody's bulk-reformatted (see CI's `format` job in
-# .github/workflows/pull-request.yml for the same reasoning). Tests are
-# intentionally left out here (CI covers them); they're slower and better
-# suited to a point where you're not blocking every single commit.
+# `dart format` drift nobody's bulk-reformatted. Tests are intentionally
+# left out here (CI covers them); they're slower and better suited to a
+# point where you're not blocking every single commit.
 set -euo pipefail
 
 echo "pre-commit: flutter analyze"
