@@ -59,10 +59,12 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
       orElse: TuningScale.empty,
     );
     _nameController = TextEditingController(text: _scale.name);
-    _rootOctaveController =
-        TextEditingController(text: _scale.rootOctave.toString());
-    _baseFrequencyController =
-        TextEditingController(text: _formatHz(_scale.baseFrequency));
+    _rootOctaveController = TextEditingController(
+      text: _scale.rootOctave.toString(),
+    );
+    _baseFrequencyController = TextEditingController(
+      text: _formatHz(_scale.baseFrequency),
+    );
     _tonePlayer.addListener(_onTonePlayerChanged);
   }
 
@@ -106,10 +108,15 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
     final n = degrees.length;
     final current = degrees[index];
     final next = degrees[(index + 1) % n];
-    final nextCents = next.cents <= current.cents ? next.cents + 1200 : next.cents;
+    final nextCents = next.cents <= current.cents
+        ? next.cents + 1200
+        : next.cents;
     final midpoint = (current.cents + nextCents) / 2 % 1200;
 
-    final updated = [...degrees, ScaleDegree(name: '${current.name} copy', cents: midpoint)];
+    final updated = [
+      ...degrees,
+      ScaleDegree(name: '${current.name} copy', cents: midpoint),
+    ];
     setState(() {
       _scale = _scale.copyWith(degrees: updated);
       _selectedIndex = null;
@@ -177,7 +184,9 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_scale.name.isEmpty ? l10n.editScaleFallbackTitle : _scale.name),
+        title: Text(
+          _scale.name.isEmpty ? l10n.editScaleFallbackTitle : _scale.name,
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.restart_alt),
@@ -209,8 +218,9 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
                 Expanded(
                   child: TextField(
                     controller: _baseFrequencyController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: l10n.baseFrequencyLabel,
                       helperText: l10n.baseFrequencyHelper,
@@ -270,11 +280,17 @@ class _CustomScaleScreenState extends State<CustomScaleScreen> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: Text(l10n.nameColumnHeader, style: const TextStyle(color: SemitoneColors.grey4)),
+                  child: Text(
+                    l10n.nameColumnHeader,
+                    style: const TextStyle(color: SemitoneColors.grey4),
+                  ),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text(l10n.positionColumnHeader, style: const TextStyle(color: SemitoneColors.grey4)),
+                  child: Text(
+                    l10n.positionColumnHeader,
+                    style: const TextStyle(color: SemitoneColors.grey4),
+                  ),
                 ),
                 const SizedBox(width: 192),
               ],
@@ -360,8 +376,9 @@ class _DegreeRowState extends State<_DegreeRow> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.degree.name);
-    _centsController =
-        TextEditingController(text: widget.degree.cents.toStringAsFixed(1));
+    _centsController = TextEditingController(
+      text: widget.degree.cents.toStringAsFixed(1),
+    );
   }
 
   @override
@@ -406,15 +423,18 @@ class _DegreeRowState extends State<_DegreeRow> {
               flex: 2,
               child: TextField(
                 controller: _centsController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(isDense: true),
                 onChanged: (v) {
                   final parsed = double.tryParse(v);
                   if (parsed != null) {
-                    final clamped = parsed % 1200;
+                    // Dart's `%` is Euclidean: with a positive divisor the
+                    // result is never negative, so -50 lands on 1150 and
+                    // 1300 on 100 without any further correction.
                     widget.onChanged(
-                      widget.degree.copyWith(cents: clamped < 0 ? clamped + 1200 : clamped),
+                      widget.degree.copyWith(cents: parsed % 1200),
                     );
                   }
                 },
@@ -437,9 +457,7 @@ class _DegreeRowState extends State<_DegreeRow> {
                     onPressed: widget.onTogglePlay,
                   ),
                   IconButton(
-                    icon: Icon(
-                      widget.isRoot ? Icons.star : Icons.star_border,
-                    ),
+                    icon: Icon(widget.isRoot ? Icons.star : Icons.star_border),
                     color: widget.isRoot
                         ? SemitoneColors.blue
                         : SemitoneColors.grey4,

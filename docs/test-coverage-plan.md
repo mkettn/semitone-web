@@ -1,9 +1,33 @@
 # Test coverage: diagnosis and plan
 
 > **Status.** Causes ①, ②, ③ and ⑤ are **done** — see "What landed" at the
-> bottom. Coverage went from **57.7% → 84.8%** overall, or **89.6%** as CI now
+> bottom. Coverage went from **57.7% → 84.8%** overall, or **89.7%** as CI now
 > measures it (generated files excluded), and the test count from 42 to 158.
-> Only cause ④ (the two mic-facing screens) remains open.
+> Cause ④ (the two mic-facing screens) is **closed as out of scope** — see
+> "What isn't tested on purpose" below.
+
+## What isn't tested on purpose
+
+**Look and feel, audio playback, and audio recording are not covered by
+automated tests.** The web deploy is where those get verified, by a human
+looking at and listening to the running app. This is a deliberate boundary, not
+a backlog item — don't add tests in these areas, and don't treat the
+corresponding uncovered lines as a gap to close:
+
+- **No golden/screenshot tests.** The two `CustomPainter`s (`scale_cake_chart`,
+  `cent_error_bar`) have their `paint()` exercised, but nothing asserts what
+  they draw, and nothing should. Wedge colours, label placement and the cent
+  marker's position are judged on the deploy.
+- **No tests that play or record audio.** This rules out `TunerScreen` and
+  `CalibrationScreen` (both driven by live microphone capture), the
+  metronome's play/pause button, and the scale editor's per-tone preview.
+  Everything *behind* those buttons — `MetronomeEngine`, `TonePlayer`,
+  `PitchPipeline`, `TunerEngine` — is fully tested through its seam, which is
+  the point of the seams: the logic is covered, the transducer isn't.
+
+That accounts for most of what's still uncovered: ~54 lines across the two
+mic-facing screens, plus the four plugin adapters. What remains genuinely
+untested and in scope is small — see the status note above.
 
 Line coverage sat at **57.7%** (790 / 1368 lines, `flutter test --concurrency=1
 --coverage` on `main` @ `be96590`). This document explains *why* it was stuck
@@ -170,7 +194,13 @@ the existing tests deliberately assert synchronous state only, but
 `_fadeOutAndStop`'s 8-step ramp is unreachable for the same reason. The same
 `ClickPlayer`-style seam (or reusing it) closes the gap.
 
-### ④ Screens that construct their own engine (`tuner_screen`, `calibration_screen`)
+### ④ Screens that construct their own engine — *closed, won't fix*
+
+> **Resolved as out of scope.** Both screens exist to drive live microphone
+> capture, which is explicitly not covered by automated tests (see "What isn't
+> tested on purpose"). The engine behind them, `TunerEngine`, is at 100%
+> through its `AudioCapture` seam; the screens themselves are verified on the
+> web deploy. The original analysis is kept below for context.
 
 `_TunerScreenState` has `final _engine = TunerEngine();` and
 `_CalibrationScreenState` the same. Because the engine is hardcoded, a widget
@@ -309,7 +339,7 @@ Ordered by payoff per unit of effort — each phase is independently shippable.
 | 1 | ③ engine extraction + tests (covers `pitch_detector` too) | ~72% | 72.4% | **done** |
 | 2 | UI tests over the editing surface (no refactor) | ~80% | 88.5% | **done** |
 | 3 | Refactor ② `scale_io` + import/export tests | ~90% | 89.6% | **done** |
-| 4 | Refactor ④ screens + UI tests 14–16 | ~94% | | open |
+| 4 | ~~Refactor ④ screens + UI tests 14–16~~ | — | — | **won't fix** |
 
 Percentages are projections from the missed-line counts above, assuming the
 tests land the lines they target; treat them as direction, not a contract.
