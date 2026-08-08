@@ -25,18 +25,57 @@ it does.
 `flutter test` has no real audio plugin (`AudioPlayer`, `AudioRecorder`)
 or Chrome available, so:
 
-- Any test that `await`s a real `AudioPlayer`/`AudioRecorder` call
-  (`start()`, `toggle()`, mic capture) will hang, not fail. Test only
-  synchronous state (e.g. a `playingKey` getter that updates before the
-  async I/O resolves), or leave the call `unawaited()` and assert
-  immediately after.
+Any test that `await`s a real `AudioPlayer`/`AudioRecorder` call
+(`start()`, `toggle()`, mic capture) will **hang, not fail** — which is
+why the code that touches those plugins sits behind seams.
+
+**Use the seams; don't call a plugin inline.** Each is a narrow interface
+with a real implementation wrapping the plugin and a fake the tests
+inject:
+
+| Seam | Wraps | Fake lives in |
+|---|---|---|
+| `AudioCapture` | `record`, for `TunerEngine` | `tuner_engine_test.dart` |
+| `ClickPlayer` | the metronome's `AudioPlayer`s | `metronome_engine_test.dart` |
+| `TonePlayback` | the preview-note `AudioPlayer` | `tone_player_test.dart` |
+| `ScaleFileIo` | `file_picker` / `file_saver` | `test/support/scale_harness.dart` |
+
+`PitchPipeline` is the same idea without a plugin: all of the tuner's DSP,
+taking `Uint8List` in and pitch readings out, so it can be tested by
+arithmetic. **When you add a dependency on a new plugin, add a seam for it
+rather than calling it from the logic** — otherwise everything downstream
+of the first `await` becomes untestable, which is how coverage got stuck
+at 58% in the first place.
+
+Other constraints:
+
 - Widget tests that pump a screen requiring mic capture (`TunerScreen`)
   can hang `pumpWidget` itself — test localization/layout against a bare
   `MaterialApp`, not the full app, when you don't need the tuner's mic
   path.
+- The scale editor's page is one **lazily built `ListView`**. At the
+  default 800px test height everything below the cake chart is never
+  mounted, so finders miss it and taps land on nothing *silently* — the
+  test passes while doing nothing. `pumpEditor` in
+  `test/support/scale_harness.dart` sets a 1000×1600 surface; use it.
 - `rootBundle` caches assets across tests in the same run; if a test
   depends on fresh asset state, clear it in `tearDown` (see
   `test/flutter_test_config.dart`).
+
+## What is not covered by automated tests
+
+**Look and feel, audio playback and audio recording are verified on the
+web deploy by a human, not in `flutter test`.** This is a deliberate
+boundary. Don't add golden/screenshot tests, don't try to fake a
+microphone or an audio device, and don't treat the uncovered lines behind
+this boundary as a gap to close — it rules out `TunerScreen`,
+`CalibrationScreen`, the metronome's play/pause button and the editor's
+per-tone preview.
+
+What *is* expected to be tested is everything behind those buttons: the
+engines, the DSP, persistence, and the scale features (create, edit,
+duplicate, delete, import/export, reset). One test fixture per feature —
+see `docs/test-coverage-plan.md` for the layout and the reasoning.
 
 ## Formatting and linting
 
@@ -122,3 +161,23 @@ or Chrome available, so:
    radius.** Prefer `push --force-with-lease=<branch>:<expected-sha>`
    over a bare `--force`, so a push fails loudly instead of clobbering
    work you didn't expect to be there.
+8. **Coverage is a proxy, and optimizing it directly produces junk.** A
+   test that walked Home → Settings → Calibration asserting each screen's
+   title appeared moved the number several points and was deleted as
+   worthless: the "routing" it covered was three `Navigator.push` calls.
+   Write tests that pin down a *rule* — a midpoint calculation, a
+   wrap-around, a refusal, a fresh id — and let the percentage follow.
+   `min_coverage` in `_test.yml` is a ratchet: raise it when tests land,
+   never lower it to make a red run go green.
+9. **A test asserting something is absent can pass because it was never
+   there.** A dialog-dismissal test checked the dialog was gone
+   afterwards — which a dialog that never opened satisfies just as well.
+   It passed on the first run, which was the clue. Whenever the assertion
+   is `findsNothing`, assert the thing *existed* first.
+10. **High line coverage hides untested branches, especially guards.**
+    `_ScaleTitleDropdown` computes `value` with a fallback to null for
+    when the active scale is missing from the list — a guard against a
+    `DropdownButton` assertion crash. It's one expression, so it counts
+    as covered while only the happy path ever runs. When a line contains
+    a conditional that exists to prevent a crash, test the crash case
+    explicitly.

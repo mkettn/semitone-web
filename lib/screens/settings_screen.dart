@@ -15,9 +15,18 @@ import 'custom_scale_screen.dart';
 /// screen's title dropdown, not here. The whole page is one ListView, so
 /// however many scales are saved, it just scrolls — it never overflows.
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key, required this.settings});
+  const SettingsScreen({
+    super.key,
+    required this.settings,
+    this.fileIo = defaultScaleFileIo,
+  });
 
   final SettingsService settings;
+
+  /// How importing and exporting reach the filesystem. Injectable so the
+  /// import/export flows can be tested without a real file picker (see
+  /// [ScaleFileIo]); the default talks to the actual platform plugins.
+  final ScaleFileIo fileIo;
 
   Future<void> _openEditor(BuildContext context, String scaleId) {
     return Navigator.of(context).push(
@@ -33,7 +42,9 @@ class SettingsScreen extends StatelessWidget {
       (s) => s.name == 'Chromatic',
       orElse: TuningScale.empty,
     );
-    final scale = template.copyWith(name: 'New scale ${settings.scales.length + 1}');
+    final scale = template.copyWith(
+      name: 'New scale ${settings.scales.length + 1}',
+    );
     settings.addScale(scale);
     if (context.mounted) await _openEditor(context, scale.id);
   }
@@ -55,17 +66,20 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _exportScale(BuildContext context, TuningScale scale) async {
     try {
-      await exportScale(scale);
+      await exportScale(scale, io: fileIo);
     } catch (e) {
       if (context.mounted) {
-        _showMessage(context, AppLocalizations.of(context)!.exportFailedMessage('$e'));
+        _showMessage(
+          context,
+          AppLocalizations.of(context)!.exportFailedMessage('$e'),
+        );
       }
     }
   }
 
   Future<void> _importScale(BuildContext context) async {
     try {
-      final imported = await importScale();
+      final imported = await importScale(io: fileIo);
       if (imported == null) return; // user cancelled the picker
       settings.addScale(imported);
       if (context.mounted) {
@@ -114,7 +128,9 @@ class SettingsScreen extends StatelessWidget {
       builder: (context, _) {
         final l10n = AppLocalizations.of(context)!;
         final scales = settings.scales;
-        final activeId = settings.activeScaleId ?? (scales.isNotEmpty ? scales.first.id : null);
+        final activeId =
+            settings.activeScaleId ??
+            (scales.isNotEmpty ? scales.first.id : null);
 
         return Scaffold(
           appBar: AppBar(title: Text(l10n.settingsTitle)),
@@ -131,7 +147,10 @@ class SettingsScreen extends StatelessWidget {
               ),
               if (scales.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Text(
                     l10n.noScalesYet,
                     style: const TextStyle(color: SemitoneColors.grey4),
@@ -193,7 +212,10 @@ class SettingsScreen extends StatelessWidget {
               ),
               _SectionHeader(l10n.languageSectionHeader),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: _LanguageDropdown(settings: settings),
               ),
               _SectionHeader(l10n.advancedSectionHeader),
@@ -242,7 +264,9 @@ final Map<String, String> _languageNamesByCode = {
 
 String _loadLanguageNameSync(Locale locale) {
   String? name;
-  AppLocalizations.delegate.load(locale).then((l10n) => name = l10n.languageName);
+  AppLocalizations.delegate
+      .load(locale)
+      .then((l10n) => name = l10n.languageName);
   return name!;
 }
 
@@ -267,11 +291,15 @@ class _LanguageDropdown extends StatelessWidget {
         iconEnabledColor: SemitoneColors.white,
         style: const TextStyle(color: SemitoneColors.white, fontSize: 16),
         items: [
-          DropdownMenuItem(value: null, child: Text(l10n.languageSystemDefault)),
+          DropdownMenuItem(
+            value: null,
+            child: Text(l10n.languageSystemDefault),
+          ),
           for (final entry in _languageNamesByCode.entries)
             DropdownMenuItem(value: entry.key, child: Text(entry.value)),
         ],
-        onChanged: (code) => settings.locale = code == null ? null : Locale(code),
+        onChanged: (code) =>
+            settings.locale = code == null ? null : Locale(code),
       ),
     );
   }
