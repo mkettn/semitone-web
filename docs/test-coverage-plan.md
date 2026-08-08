@@ -4,7 +4,14 @@
 > bottom. Coverage went from **57.7% → 84.8%** overall, or **89.7%** as CI now
 > measures it (generated files excluded), and the test count from 42 to 158.
 > Cause ④ (the two mic-facing screens) is **closed as out of scope** — see
-> "What isn't tested on purpose" below.
+> "What isn't tested on purpose" below. Two in-scope gaps remain open; see
+> "Still open, and in scope".
+>
+> **In retrospect, this document's own framing was its biggest flaw.** It
+> organized the work around a coverage percentage, and the one test that had
+> to be deleted was the one written to move that number. The durable wins
+> were the seams and the tests that pin down rules. Read the phase table as
+> history, not as a target.
 
 ## What isn't tested on purpose
 
@@ -26,8 +33,42 @@ corresponding uncovered lines as a gap to close:
   the point of the seams: the logic is covered, the transducer isn't.
 
 That accounts for most of what's still uncovered: ~54 lines across the two
-mic-facing screens, plus the four plugin adapters. What remains genuinely
-untested and in scope is small — see the status note above.
+mic-facing screens, plus the four plugin adapters.
+
+## Still open, and in scope
+
+Two things, both worth doing:
+
+**1. The app-bar scale switcher has no fixture.** `_ScaleTitleDropdown`'s
+`onChanged` — which sets `activeScaleId`, i.e. decides which scale the tuner
+matches against — is uncovered, as is the settings gear beside it. This is a
+scale feature like the others and should get `scale_switch_test.dart`.
+
+It carries a crash risk that line coverage actively hides. The dropdown
+computes:
+
+```dart
+final value = (active != null && scales.any((s) => s.id == active.id))
+    ? active.id
+    : null;
+```
+
+That fallback exists because `DropdownButton` asserts when `value` isn't among
+its `items`. Because it's a single expression, it reads as covered — but only
+the happy path ever runs. Nothing tests that a stale `activeScaleId` (after a
+delete, a reset, or an import) degrades to the hint instead of throwing.
+
+**2. Nothing joins pitch detection to note matching.** `PitchPipeline` is at
+100% and `TuningScale.matchFrequency` at 100%, but no test feeds synthesized
+PCM through the pipeline into a scale and asserts it reads "A4, +0 cents".
+That's the app's central promise, tested only in halves. It needs no
+microphone and no audio device — bytes in, a `ScaleMatch` out — so it sits
+inside the boundary above, not outside it.
+
+Minor, if anyone is bored: both ARB files carry 67 keys but only one German
+string is ever asserted, so a placeholder mismatch in a translation would ship
+unnoticed. A parity test that resolves every key in every supported locale is
+about a dozen lines.
 
 Line coverage sat at **57.7%** (790 / 1368 lines, `flutter test --concurrency=1
 --coverage` on `main` @ `be96590`). This document explains *why* it was stuck
