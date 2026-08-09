@@ -109,10 +109,20 @@ jobs:
         if: inputs.action == 'sync'
         run: flutter pub get
 
+      # --wasm ships a JS fallback alongside, picked at load time, so this
+      # stays safe on browsers without WasmGC. CANVASKIT_BASE_URL is passed
+      # even when empty, which the bootstrap treats as "use Flutter's CDN"
+      # and which avoids an unhandled-template-variable warning.
       - name: Build web
         if: inputs.action == 'sync'
         run: |
-          flutter build web --release --base-href "${{ needs.compute.outputs.base_href }}"
+          flutter build web --release --wasm \
+            --base-href "${{ needs.compute.outputs.base_href }}" \
+            --web-define=CANVASKIT_BASE_URL="${{ vars.CANVASKIT_BASE_URL }}"
+
+      - name: Work around the host's missing .mjs MIME type
+        if: inputs.action == 'sync'
+        run: scripts/patch-mjs-mime.sh build/web
 
       - name: Install lftp
         run: |

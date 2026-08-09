@@ -96,5 +96,6 @@ jobs:
       # deploy in _web-deploy.yml), so a web-incompatible change gets
       # caught here even on a draft PR, well before someone marks it ready
       # for review and only then discovers the preview deploy fails.
+      # Mirrors the deploy's flags so a wasm-only failure can't slip past.
       - name: Build web
-        run: flutter build web --release
+        run: flutter build web --release --wasm --web-define=CANVASKIT_BASE_URL=

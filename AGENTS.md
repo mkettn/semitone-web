@@ -122,6 +122,11 @@ particular stored contents still seed them explicitly (see
   enabled before assuming a gap — some things you'd expect (e.g.
   `use_build_context_synchronously`, `avoid_print`) are already on by
   default via that package.
+- **Comments have to earn their place: a sentence or two, only where the
+  code can't speak for itself** — a non-obvious constraint, why a
+  workaround exists, a gotcha that cost someone an afternoon. Don't
+  restate what a tool's own documentation covers; that goes stale as the
+  tool changes, and the docs stay current.
 
 ## CI workflow conventions (`.github/workflows/`)
 
@@ -129,6 +134,19 @@ particular stored contents still seed them explicitly (see
   workflows (`workflow_call`); other files under `.github/workflows/`
   are the actual triggers (`pull-request.yml`, `main-push.yml`,
   `release.yml`, `dependency-scan.yml`).
+- The web build uses `--wasm` in both `_test.yml` and `_web-deploy.yml` —
+  keep the two in step, or a WasmGC-only compile error slips through CI
+  and fails at deploy.
+- `web/flutter_bootstrap.js` is ours, a source template rather than
+  Flutter's generated one. Keep every `{{…}}` token it already has; drop
+  one and you silently lose that piece, such as the service worker.
+- Build-time values belong in `--web-define`, not a `sed` over build
+  output. That's how `CANVASKIT_BASE_URL` reaches the bootstrap, so the
+  engine renderer can be served from our own host instead of Google's CDN;
+  such a URL must match the build's `engineRevision`.
+- `scripts/patch-mjs-mime.sh` is the one thing that does patch build
+  output, because no build flag can. Its header says why and when to
+  delete it.
 - A job that declares `secrets:` in a reusable-workflow call has **all**
   of its `outputs:` stripped by GitHub, even outputs that never touch a
   secret. `_web-deploy.yml`'s `compute`/`deploy` split exists solely so
