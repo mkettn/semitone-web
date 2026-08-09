@@ -55,8 +55,22 @@ jobs:
           name: app-release-apk
           path: dist
 
+      # A prerelease tag looks like v1.2.3-rc4; anything else (v1.2.3) is a
+      # full release. GitHub Actions expressions have no native pattern
+      # matching beyond contains/startsWith/endsWith, so this uses a bash
+      # regex instead.
+      - name: Determine prerelease status
+        id: prerelease
+        run: |
+          if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$ ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
           files: dist/*.apk
           generate_release_notes: true
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
