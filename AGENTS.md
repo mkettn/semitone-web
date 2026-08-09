@@ -129,6 +129,16 @@ particular stored contents still seed them explicitly (see
   workflows (`workflow_call`); other files under `.github/workflows/`
   are the actual triggers (`pull-request.yml`, `main-push.yml`,
   `release.yml`, `dependency-scan.yml`).
+- The web build uses **`--wasm`**, in both `_test.yml` and
+  `_web-deploy.yml` — keep the two in step, or a WasmGC-only compile error
+  slips through CI and fails at deploy. `--wasm` builds *both* dart2wasm
+  and dart2js and ships them together; `flutter_bootstrap.js` picks at
+  load time by validating a small module containing a WasmGC struct type.
+  It also switches the renderer (wasm → skwasm, JS fallback → CanvasKit),
+  which is where most of the download saving comes from. Cross-origin
+  isolation is **not** required: without COOP/COEP the loader sets
+  `skwasmSingleThreaded` and carries on, which is what makes this work on
+  the plain SFTP static host we deploy to.
 - A job that declares `secrets:` in a reusable-workflow call has **all**
   of its `outputs:` stripped by GitHub, even outputs that never touch a
   secret. `_web-deploy.yml`'s `compute`/`deploy` split exists solely so

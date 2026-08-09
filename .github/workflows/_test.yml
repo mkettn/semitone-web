@@ -96,5 +96,11 @@ jobs:
       # deploy in _web-deploy.yml), so a web-incompatible change gets
       # caught here even on a draft PR, well before someone marks it ready
       # for review and only then discovers the preview deploy fails.
+      #
+      # --wasm to match what _web-deploy.yml builds. It compiles both
+      # dart2wasm and dart2js, so this also catches a change that only the
+      # WasmGC target rejects — which would otherwise pass here and fail at
+      # deploy time. Costs roughly 40s (≈56s → ≈95s) for the second
+      # compilation.
       - name: Build web
-        run: flutter build web --release
+        run: flutter build web --release --wasm

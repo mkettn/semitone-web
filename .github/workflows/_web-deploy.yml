@@ -109,10 +109,21 @@ jobs:
         if: inputs.action == 'sync'
         run: flutter pub get
 
+      # --wasm compiles *both* dart2wasm and dart2js and ships them side by
+      # side; flutter_bootstrap.js picks at load time by validating a tiny
+      # module containing a WasmGC struct type, falling back to the JS build
+      # where that fails. It also switches the renderer — wasm builds use
+      # skwasm, the JS fallback stays on CanvasKit — which is where most of
+      # the saving comes from: skwasm is roughly 600 KB smaller gzipped than
+      # the CanvasKit variant it replaces.
+      #
+      # Cross-origin isolation is *not* required. Without COOP/COEP the
+      # loader sets skwasmSingleThreaded and carries on, so this works on a
+      # plain static host that can't set response headers.
       - name: Build web
         if: inputs.action == 'sync'
         run: |
-          flutter build web --release --base-href "${{ needs.compute.outputs.base_href }}"
+          flutter build web --release --wasm --base-href "${{ needs.compute.outputs.base_href }}"
 
       - name: Install lftp
         run: |
