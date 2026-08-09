@@ -235,7 +235,7 @@ class SettingsScreen extends StatelessWidget {
                 title: Text(l10n.micCalibrationTitle),
                 subtitle: Text(l10n.micCalibrationSubtitle),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
+                  MaterialPageRoute<void>(
                     builder: (_) => CalibrationScreen(settings: settings),
                   ),
                 ),

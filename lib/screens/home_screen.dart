@@ -78,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen>
             tooltip: l10n.settingsTooltip,
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
+                MaterialPageRoute<void>(
                   builder: (_) => SettingsScreen(settings: widget.settings),
                 ),
               );
