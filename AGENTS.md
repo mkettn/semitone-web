@@ -122,6 +122,11 @@ particular stored contents still seed them explicitly (see
   enabled before assuming a gap — some things you'd expect (e.g.
   `use_build_context_synchronously`, `avoid_print`) are already on by
   default via that package.
+- **Comments have to earn their place: a sentence or two, only where the
+  code can't speak for itself** — a non-obvious constraint, why a
+  workaround exists, a gotcha that cost someone an afternoon. Don't
+  restate what a tool's own documentation covers; that goes stale as the
+  tool changes, and the docs stay current.
 
 ## CI workflow conventions (`.github/workflows/`)
 
