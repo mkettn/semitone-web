@@ -27,6 +27,9 @@ class _TunerScreenState extends State<TunerScreen> {
     super.initState();
     _engine.calibrationOffsetHz = widget.settings.micOffsetHz;
     widget.settings.addListener(_onSettingsChanged);
+    // initState() can't be async; _init() reports its own results via
+    // setState() once it resolves.
+    // ignore: discarded_futures
     _init();
   }
 
@@ -62,6 +65,9 @@ class _TunerScreenState extends State<TunerScreen> {
   @override
   void dispose() {
     widget.settings.removeListener(_onSettingsChanged);
+    // dispose() can't be async; TunerEngine.dispose() is best-effort
+    // cleanup with nothing here that needs to observe it finishing.
+    // ignore: discarded_futures
     _engine.dispose();
     super.dispose();
   }

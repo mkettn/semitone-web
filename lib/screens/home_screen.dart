@@ -77,6 +77,9 @@ class _HomeScreenState extends State<HomeScreen>
             icon: const Icon(Icons.settings),
             tooltip: l10n.settingsTooltip,
             onPressed: () {
+              // Fire-and-forget navigation: nothing here needs the popped
+              // result, only that the push happens.
+              // ignore: discarded_futures
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => SettingsScreen(settings: widget.settings),

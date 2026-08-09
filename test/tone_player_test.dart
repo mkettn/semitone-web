@@ -54,6 +54,9 @@ class FakeTonePlayback implements TonePlayback {
   @override
   void dispose() {
     disposeCount++;
+    // dispose() is a sync interface method (see TonePlayback); nothing here
+    // needs to await the controller actually finishing its close.
+    // ignore: discarded_futures
     _complete.close();
   }
 }

@@ -276,8 +276,12 @@ final Map<String, String> _languageNamesByCode = {
 
 String _loadLanguageNameSync(Locale locale) {
   String? name;
+  // See the doc comment above: this resolves synchronously via a
+  // SynchronousFuture, so `name` is already set by the time `.then()`
+  // returns — there's nothing real to await.
   AppLocalizations.delegate
       .load(locale)
+      // ignore: discarded_futures
       .then((l10n) => name = l10n.languageName);
   return name!;
 }
