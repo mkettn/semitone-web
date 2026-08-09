@@ -34,7 +34,7 @@ class TuningScale {
     this.baseFrequency = 440,
   }) : id = id ?? _generateId(),
        degrees = List.unmodifiable(
-         [...degrees]..sort((a, b) => a.cents.compareTo(b.cents)),
+         <ScaleDegree>[...degrees]..sort((a, b) => a.cents.compareTo(b.cents)),
        );
 
   /// Stable identity used to select/store/update this scale independently

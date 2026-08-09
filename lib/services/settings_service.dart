@@ -1,3 +1,10 @@
+// Every _prefs.set*/.remove call below is deliberately unawaited: the
+// shared_preferences plugin keeps a read-your-own-writes in-memory cache,
+// so a getter called right after a setter (as every one of them is, via
+// notifyListeners()) already sees the new value — the actual disk flush
+// happens in the background and nothing here needs to wait on it.
+// ignore_for_file: discarded_futures, unawaited_futures
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:shared_preferences/shared_preferences.dart';

@@ -35,12 +35,15 @@ class _MetronomeScreenState extends State<MetronomeScreen> {
     if (widget.engine.running) {
       widget.engine.stop();
     } else {
+      // Fire-and-forget: MetronomeEngine is a ChangeNotifier, so the UI
+      // updates via _refresh() once start() actually gets going — nothing
+      // here needs to await it finishing.
+      // ignore: discarded_futures
       widget.engine.start();
     }
   }
 
-  void _changeBpm(int delta) =>
-      widget.engine.bpm = widget.engine.bpm + delta;
+  void _changeBpm(int delta) => widget.engine.bpm = widget.engine.bpm + delta;
 
   @override
   Widget build(BuildContext context) {

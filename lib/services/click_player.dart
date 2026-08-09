@@ -1,3 +1,9 @@
+// play() is deliberately synchronous (see its doc comment: awaiting a
+// click would drift with playback latency), and dispose() is a sync
+// interface method — both call AudioPlayer methods that return a Future
+// with nothing here able to await it.
+// ignore_for_file: discarded_futures, unawaited_futures
+
 import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';

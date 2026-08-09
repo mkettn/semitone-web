@@ -1,3 +1,9 @@
+// Every unawaited call below is _tonePlayer.stop()/.toggle() from a sync
+// UI callback (button press, onChanged) — TonePlayer's own internal queue
+// (see tone_player.dart) serializes these safely regardless of whether the
+// caller awaits, which is the whole point of that queue existing.
+// ignore_for_file: discarded_futures, unawaited_futures
+
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';

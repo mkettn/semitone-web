@@ -28,6 +28,9 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
   @override
   void initState() {
     super.initState();
+    // initState() can't be async; _init() reports its own results via
+    // setState() once it resolves.
+    // ignore: discarded_futures
     _init();
   }
 
@@ -70,6 +73,9 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
   @override
   void dispose() {
     _referenceController.dispose();
+    // dispose() can't be async; TunerEngine.dispose() is best-effort
+    // cleanup with nothing here that needs to observe it finishing.
+    // ignore: discarded_futures
     _engine.dispose();
     super.dispose();
   }
@@ -87,7 +93,10 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
             children: [
               Text(
                 l10n.calibrationDescription,
-                style: const TextStyle(color: SemitoneColors.grey4, fontSize: 14),
+                style: const TextStyle(
+                  color: SemitoneColors.grey4,
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 24),
               TextField(
@@ -130,7 +139,9 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
               ),
               const SizedBox(height: 32),
               Text(
-                l10n.currentOffsetLabel(widget.settings.micOffsetHz.toStringAsFixed(2)),
+                l10n.currentOffsetLabel(
+                  widget.settings.micOffsetHz.toStringAsFixed(2),
+                ),
                 style: const TextStyle(color: SemitoneColors.grey4),
               ),
               const SizedBox(height: 8),

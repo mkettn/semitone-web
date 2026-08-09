@@ -90,7 +90,7 @@ class TonePlayer extends ChangeNotifier {
     const steps = 8;
     for (var i = steps - 1; i >= 0; i--) {
       await _player.setVolume(i / steps);
-      await Future.delayed(const Duration(milliseconds: 6));
+      await Future<void>.delayed(const Duration(milliseconds: 6));
     }
     await _player.stop();
   }
