@@ -125,6 +125,49 @@ jobs:
         run: |
           flutter build web --release --wasm --base-href "${{ needs.compute.outputs.base_href }}"
 
+      # The deploy host runs nginx, which has no MIME mapping for .mjs and
+      # serves it as application/octet-stream. Browsers apply strict MIME
+      # checking to ES modules and refuse to import it:
+      #
+      #   Failed to load module script: Expected a JavaScript-or-Wasm module
+      #   script but the server responded with a MIME type of
+      #   "application/octet-stream".
+      #
+      # main.dart.mjs is the dart2wasm build's JS support runtime, so that
+      # kills the whole app — a blank page, reproduced and confirmed in
+      # headless Chromium against a server mimicking this one. The JS build
+      # was unaffected because it has no .mjs file.
+      #
+      # Renaming it so the *final* extension is .js gets it served as
+      # application/javascript. Only flutter_bootstrap.js names the file
+      # (checked across the whole build output), so one substitution is
+      # enough.
+      #
+      # This is a workaround for a server-side gap, not something Flutter
+      # needs: delete this step once nginx maps .mjs -> text/javascript.
+      - name: Rename .mjs so nginx serves it as JavaScript
+        if: inputs.action == 'sync'
+        run: |
+          set -euo pipefail
+          cd build/web
+
+          if [ ! -f main.dart.mjs ]; then
+            echo "::error::main.dart.mjs is missing - has the wasm build layout changed? If Flutter no longer emits it, drop this step." >&2
+            exit 1
+          fi
+          if ! grep -q 'main\.dart\.mjs' flutter_bootstrap.js; then
+            echo "::error::flutter_bootstrap.js does not reference main.dart.mjs - the rename would orphan the file." >&2
+            exit 1
+          fi
+
+          mv main.dart.mjs main.dart.mjs.js
+          sed -i 's/main\.dart\.mjs/main.dart.mjs.js/g' flutter_bootstrap.js
+
+          # Fail loudly rather than shipping a build that points at a file
+          # that is no longer there.
+          grep -q 'main\.dart\.mjs\.js' flutter_bootstrap.js
+          echo "main.dart.mjs -> main.dart.mjs.js, reference updated."
+
       - name: Install lftp
         run: |
           sudo apt-get update -y
