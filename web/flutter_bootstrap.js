@@ -6,28 +6,30 @@
 // By default Flutter loads it from
 // https://www.gstatic.com/flutter-canvaskit/<engineRevision>/ — a
 // third-party request to Google on every first load, before the user has
-// interacted with anything. Setting the CANVASKIT_BASE_URL repository
-// variable makes the deploy workflow rewrite the placeholder below so the
-// engine is served from our own host instead, and no request leaves it.
+// interacted with anything. Passing
 //
-// Leaving the variable unset keeps Google's CDN, which is also what a plain
-// local `flutter build web` gets: nothing rewrites the placeholder, the
-// guard below sees it, and Flutter's own default applies. So this file
-// never needs the workflow to have run.
+//   flutter build web --web-define=CANVASKIT_BASE_URL=https://example.com/ck/
 //
-// If you do set it, the URL must serve the CanvasKit build matching the
+// substitutes the placeholder below so the engine is served from there
+// instead, and nothing leaves our own host. The deploy workflow passes the
+// CANVASKIT_BASE_URL repository variable through; leave it unset and the
+// app keeps using Google's CDN.
+//
+// A self-hosted URL must serve the CanvasKit build matching the
 // engineRevision in the buildConfig above — a mismatch fails at runtime.
 // Those files are in `build/web/canvaskit/` after any `flutter build web`.
-const canvasKitBaseUrl = '__CANVASKIT_BASE_URL__';
+const canvasKitBaseUrl = '{{CANVASKIT_BASE_URL}}';
 
-// A placeholder that still starts with "__" means "not configured" — pass
-// no override at all rather than requesting a nonsense URL.
-const engineConfig = canvasKitBaseUrl.startsWith('__')
-  ? {}
-  : { canvasKitBaseUrl: canvasKitBaseUrl };
+// Two ways this can legitimately be "not configured": the workflow passed
+// an empty value because the repository variable isn't set, or nobody
+// passed --web-define at all (a plain local `flutter build web`), which
+// leaves the placeholder untouched. Treat both as "use Flutter's default"
+// rather than requesting a nonsense URL.
+const useCustomCanvasKit =
+  canvasKitBaseUrl !== '' && !canvasKitBaseUrl.startsWith('{{');
 
 _flutter.loader.load({
-  config: engineConfig,
+  config: useCustomCanvasKit ? { canvasKitBaseUrl: canvasKitBaseUrl } : {},
   serviceWorkerSettings: {
     serviceWorkerVersion: {{flutter_service_worker_version}}
   }

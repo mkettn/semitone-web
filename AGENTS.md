@@ -139,20 +139,31 @@ particular stored contents still seed them explicitly (see
   isolation is **not** required: without COOP/COEP the loader sets
   `skwasmSingleThreaded` and carries on, which is what makes this work on
   the plain SFTP static host we deploy to.
-- `web/flutter_bootstrap.js` is **ours**, not Flutter's generated one. It
-  keeps the `{{flutter_js}}`, `{{flutter_build_config}}` and
-  `{{flutter_service_worker_version}}` tokens the tool substitutes — drop
-  one and you silently lose that piece (the service worker, say). It adds
-  a `__CANVASKIT_BASE_URL__` placeholder so the deploy can serve the engine
-  renderer from our own host instead of Google's CDN when the
-  `CANVASKIT_BASE_URL` repository variable is set; unset, the placeholder
-  survives, the bootstrap's own guard sees it and falls back to the
-  default. A self-hosted URL must serve the CanvasKit build matching the
-  build's `engineRevision`, so it needs re-uploading on a Flutter upgrade.
-- The deploy also renames `main.dart.mjs` to `main.dart.mjs.js`, because
-  the host's nginx has no MIME mapping for `.mjs` and browsers refuse ES
-  modules served as `application/octet-stream` — a blank page. Delete that
-  step once the server maps `.mjs` → `text/javascript`.
+- `web/flutter_bootstrap.js` is **ours**, not Flutter's generated one — a
+  source template, not build output. It keeps `{{flutter_js}}`,
+  `{{flutter_build_config}}` and `{{flutter_service_worker_version}}`,
+  which the tool substitutes; drop one and you silently lose that piece
+  (the service worker, say).
+- **Build-time values belong in `--web-define`, not in a `sed` over build
+  output.** `--web-define=NAME=VALUE` substitutes `{{NAME}}` in
+  `web/index.html` and `web/flutter_bootstrap.js`. That's how
+  `CANVASKIT_BASE_URL` reaches the bootstrap, letting the engine renderer
+  be served from our own host instead of Google's CDN. The workflows pass
+  it unconditionally — an empty value when the repository variable is
+  unset — because an unpassed variable makes Flutter warn about an
+  unhandled placeholder. The bootstrap treats both an empty value and an
+  unsubstituted `{{…}}` as "not configured" and falls back, so a plain
+  local `flutter build web` works with no flags. A self-hosted URL must
+  serve the CanvasKit build matching the build's `engineRevision`, so it
+  needs re-uploading on a Flutter upgrade.
+- `scripts/patch-mjs-mime.sh` renames `main.dart.mjs` to
+  `main.dart.mjs.js` after the build, because the host's nginx has no MIME
+  mapping for `.mjs` and browsers refuse ES modules served as
+  `application/octet-stream` — a blank page. This one genuinely does patch
+  build output, since no build flag can change it; that's why it's a
+  script with its reasoning in the header rather than an inline workflow
+  step. Delete script and step once the server maps `.mjs` →
+  `text/javascript`.
 - A job that declares `secrets:` in a reusable-workflow call has **all**
   of its `outputs:` stripped by GitHub, even outputs that never touch a
   secret. `_web-deploy.yml`'s `compute`/`deploy` split exists solely so

@@ -102,5 +102,10 @@ jobs:
       # WasmGC target rejects — which would otherwise pass here and fail at
       # deploy time. Costs roughly 40s (≈56s → ≈95s) for the second
       # compilation.
+      #
+      # --web-define is passed with an empty value purely so Flutter doesn't
+      # warn about the unhandled {{CANVASKIT_BASE_URL}} template variable in
+      # web/flutter_bootstrap.js. Nothing here is served, so the renderer
+      # URL is irrelevant to this step.
       - name: Build web
-        run: flutter build web --release --wasm
+        run: flutter build web --release --wasm --web-define=CANVASKIT_BASE_URL=
