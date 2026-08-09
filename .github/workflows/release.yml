@@ -13,7 +13,43 @@ permissions:
   contents: write
 
 jobs:
+  # Computed once and shared by every job below, rather than each
+  # recomputing it (or, worse, disagreeing with each other).
+  info:
+    runs-on: ubuntu-latest
+    outputs:
+      build_name: ${{ steps.version.outputs.build_name }}
+      build_number: ${{ steps.version.outputs.build_number }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    steps:
+      # build_name/build_number become --build-name/--build-number in
+      # _flutter-build.yml, overriding pubspec.yaml's version for this
+      # build so the git tag is the source of truth for a release.
+      # workflow_dispatch runs (no tag) fall back to a placeholder name;
+      # build_number just needs to keep increasing, which the workflow
+      # run number already does.
+      #
+      # A prerelease tag looks like v1.2.3-rc4; anything else (v1.2.3) is
+      # a full release. GitHub Actions expressions have no native pattern
+      # matching beyond contains/startsWith/endsWith, so this uses a bash
+      # regex instead.
+      - name: Determine version info
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            echo "build_name=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_name=0.0.0" >> "$GITHUB_OUTPUT"
+          fi
+          echo "build_number=$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$ ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
   android:
+    needs: info
     uses: ./.github/workflows/_flutter-build.yml
     with:
       platform: android
@@ -22,6 +58,8 @@ jobs:
       # + arch — see _flutter-build.yml's "Rename Android release APK"
       # step), so this is a glob rather than a fixed name.
       artifact_path: build/app/outputs/flutter-apk/*.apk
+      build_name: ${{ needs.info.outputs.build_name }}
+      build_number: ${{ needs.info.outputs.build_number }}
     secrets:
       android_keystore_base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -32,16 +70,28 @@ jobs:
   # for iOS yet. Once App Store distribution is set up, this can grow
   # its own signing step (mirroring Android's above) and a publish job
   # that uploads to TestFlight/App Store Connect instead of skipping it.
+  #
+  # Skipped for -rcN prereleases: those exist to validate the Android
+  # build ahead of a real release, and don't need an iOS build health
+  # check riding along.
   ios:
+    needs: info
+    if: needs.info.outputs.is_prerelease != 'true'
     uses: ./.github/workflows/_flutter-build.yml
     with:
       platform: ios
       artifact_name: Runner.app
       artifact_path: build/ios/iphoneos/Runner.app
+      build_name: ${{ needs.info.outputs.build_name }}
+      build_number: ${{ needs.info.outputs.build_number }}
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [android, ios]
+    # ios is skipped for prereleases (see above), which would otherwise
+    # make this job skip too — needs() treats a skipped dependency as not
+    # satisfied unless told to run anyway. android's own result still
+    # gates it, so a failed or skipped Android build blocks publishing.
+    if: always() && startsWith(github.ref, 'refs/tags/') && needs.android.result == 'success'
+    needs: [info, android, ios]
     runs-on: ubuntu-latest
     steps:
       - name: Download Android APK
@@ -50,22 +100,9 @@ jobs:
           name: app-release-apk
           path: dist
 
-      # A prerelease tag looks like v1.2.3-rc4; anything else (v1.2.3) is a
-      # full release. GitHub Actions expressions have no native pattern
-      # matching beyond contains/startsWith/endsWith, so this uses a bash
-      # regex instead.
-      - name: Determine prerelease status
-        id: prerelease
-        run: |
-          if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$ ]]; then
-            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
           files: dist/*.apk
           generate_release_notes: true
-          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
+          prerelease: ${{ needs.info.outputs.is_prerelease }}
