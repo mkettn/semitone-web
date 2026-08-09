@@ -109,25 +109,10 @@ jobs:
         if: inputs.action == 'sync'
         run: flutter pub get
 
-      # --wasm compiles *both* dart2wasm and dart2js and ships them side by
-      # side; flutter_bootstrap.js picks at load time by validating a tiny
-      # module containing a WasmGC struct type, falling back to the JS build
-      # where that fails. It also switches the renderer — wasm builds use
-      # skwasm, the JS fallback stays on CanvasKit — which is where most of
-      # the saving comes from: skwasm is roughly 600 KB smaller gzipped than
-      # the CanvasKit variant it replaces.
-      #
-      # Cross-origin isolation is *not* required. Without COOP/COEP the
-      # loader sets skwasmSingleThreaded and carries on, so this works on a
-      # plain static host that can't set response headers.
-      #
-      # --web-define substitutes {{CANVASKIT_BASE_URL}} in
-      # web/flutter_bootstrap.js, which is how the engine renderer gets
-      # served from our own host instead of Google's CDN. Passed
-      # unconditionally: when the repository variable is unset the value is
-      # empty, the bootstrap's own guard sees that and falls back to the
-      # default. Passing it always also keeps Flutter from warning about an
-      # unhandled template variable.
+      # --wasm ships a JS fallback alongside, picked at load time, so this
+      # stays safe on browsers without WasmGC. CANVASKIT_BASE_URL is passed
+      # even when empty, which the bootstrap treats as "use Flutter's CDN"
+      # and which avoids an unhandled-template-variable warning.
       - name: Build web
         if: inputs.action == 'sync'
         run: |
@@ -135,9 +120,6 @@ jobs:
             --base-href "${{ needs.compute.outputs.base_href }}" \
             --web-define=CANVASKIT_BASE_URL="${{ vars.CANVASKIT_BASE_URL }}"
 
-      # Patches build output, so it lives in a script rather than inline
-      # here — see the header of that file for why it is needed and when it
-      # can be deleted.
       - name: Work around the host's missing .mjs MIME type
         if: inputs.action == 'sync'
         run: scripts/patch-mjs-mime.sh build/web

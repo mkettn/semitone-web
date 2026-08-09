@@ -96,16 +96,6 @@ jobs:
       # deploy in _web-deploy.yml), so a web-incompatible change gets
       # caught here even on a draft PR, well before someone marks it ready
       # for review and only then discovers the preview deploy fails.
-      #
-      # --wasm to match what _web-deploy.yml builds. It compiles both
-      # dart2wasm and dart2js, so this also catches a change that only the
-      # WasmGC target rejects — which would otherwise pass here and fail at
-      # deploy time. Costs roughly 40s (≈56s → ≈95s) for the second
-      # compilation.
-      #
-      # --web-define is passed with an empty value purely so Flutter doesn't
-      # warn about the unhandled {{CANVASKIT_BASE_URL}} template variable in
-      # web/flutter_bootstrap.js. Nothing here is served, so the renderer
-      # URL is irrelevant to this step.
+      # Mirrors the deploy's flags so a wasm-only failure can't slip past.
       - name: Build web
         run: flutter build web --release --wasm --web-define=CANVASKIT_BASE_URL=
