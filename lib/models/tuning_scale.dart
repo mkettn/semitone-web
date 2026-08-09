@@ -16,8 +16,6 @@ class ScaleMatch {
 
   /// Signed deviation in cents from the matched degree (-600..600).
   final double errorCents;
-
-  String get label => '$degreeName${octave >= 0 ? octave : octave}';
 }
 
 /// A set of named tone-height boundaries within an octave, used to
@@ -34,10 +32,10 @@ class TuningScale {
     this.rootIndex = 0,
     this.rootOctave = 4,
     this.baseFrequency = 440,
-  })  : id = id ?? _generateId(),
-        degrees = List.unmodifiable(
-          [...degrees]..sort((a, b) => a.cents.compareTo(b.cents)),
-        );
+  }) : id = id ?? _generateId(),
+       degrees = List.unmodifiable(
+         [...degrees]..sort((a, b) => a.cents.compareTo(b.cents)),
+       );
 
   /// Stable identity used to select/store/update this scale independently
   /// of its (user-editable, possibly duplicated) name.
@@ -177,13 +175,13 @@ class TuningScale {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'degrees': degrees.map((d) => d.toJson()).toList(),
-        'rootIndex': rootIndex,
-        'rootOctave': rootOctave,
-        'baseFrequency': baseFrequency,
-      };
+    'id': id,
+    'name': name,
+    'degrees': degrees.map((d) => d.toJson()).toList(),
+    'rootIndex': rootIndex,
+    'rootOctave': rootOctave,
+    'baseFrequency': baseFrequency,
+  };
 
   factory TuningScale.fromJson(Map<String, dynamic> json) {
     final degs = (json['degrees'] as List)

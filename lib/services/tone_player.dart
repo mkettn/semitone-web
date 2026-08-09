@@ -1,6 +1,6 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
+import 'tone_playback.dart';
 import 'wav_synth.dart';
 
 /// Plays a single one-shot preview note at a time — for previewing a scale
@@ -9,15 +9,16 @@ import 'wav_synth.dart';
 /// one stops whatever was already playing, and toggling the same key off
 /// just stops it early.
 class TonePlayer extends ChangeNotifier {
-  TonePlayer() {
-    _player.onPlayerComplete.listen((_) {
+  TonePlayer({TonePlayback? playback})
+    : _player = playback ?? AudioPlayersTonePlayback() {
+    _player.onComplete.listen((_) {
       if (_playingKey == null) return;
       _playingKey = null;
       notifyListeners();
     });
   }
 
-  final AudioPlayer _player = AudioPlayer();
+  final TonePlayback _player;
   Object? _playingKey;
   int _generation = 0;
 
@@ -63,9 +64,8 @@ class TonePlayer extends ChangeNotifier {
       if (generation != _generation) return;
 
       await _player.setVolume(1.0);
-      await _player.setSourceBytes(
+      await _player.setSource(
         pcmToWavBytes(pluckedTonePcm(frequencyHz), 44100),
-        mimeType: 'audio/wav',
       );
       if (generation != _generation) return;
 

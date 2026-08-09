@@ -2,21 +2,21 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
+import 'click_player.dart';
 import 'wav_synth.dart';
 
 /// Drives a simple metronome, synthesizing its own click sounds (short sine
 /// bursts) so the app doesn't depend on bundled audio assets.
 class MetronomeEngine extends ChangeNotifier {
-  MetronomeEngine();
+  MetronomeEngine({ClickPlayer? player})
+    : _player = player ?? AudioPlayersClickPlayer();
 
   static const minBpm = 20;
   static const maxBpm = 300;
 
-  final AudioPlayer _strongPlayer = AudioPlayer();
-  final AudioPlayer _weakPlayer = AudioPlayer();
+  final ClickPlayer _player;
   Timer? _timer;
 
   int _bpm = 120;
@@ -41,10 +41,10 @@ class MetronomeEngine extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    await _strongPlayer.setSourceBytes(_click(frequency: 1600, ms: 60));
-    await _weakPlayer.setSourceBytes(_click(frequency: 1000, ms: 45));
-    await _strongPlayer.setReleaseMode(ReleaseMode.stop);
-    await _weakPlayer.setReleaseMode(ReleaseMode.stop);
+    await _player.load(
+      strong: _click(frequency: 1600, ms: 60),
+      weak: _click(frequency: 1000, ms: 45),
+    );
   }
 
   bool _initialized = false;
@@ -76,10 +76,7 @@ class MetronomeEngine extends ChangeNotifier {
   }
 
   void _tick() {
-    final isDownbeat = _beat == 0;
-    final player = isDownbeat ? _strongPlayer : _weakPlayer;
-    player.seek(Duration.zero);
-    player.resume();
+    _player.play(strong: _beat == 0);
     _beat = (_beat + 1) % _beatsPerBar;
     notifyListeners();
   }
@@ -101,8 +98,7 @@ class MetronomeEngine extends ChangeNotifier {
   @override
   void dispose() {
     _timer?.cancel();
-    _strongPlayer.dispose();
-    _weakPlayer.dispose();
+    _player.dispose();
     super.dispose();
   }
 }
