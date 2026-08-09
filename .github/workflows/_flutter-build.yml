@@ -55,7 +55,7 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.android_keystore_base64 }}
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
           cat > android/key.properties <<PROPS
           storeFile=release.keystore
           storePassword=${{ secrets.android_keystore_password }}
