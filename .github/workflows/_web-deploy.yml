@@ -145,6 +145,40 @@ jobs:
       #
       # This is a workaround for a server-side gap, not something Flutter
       # needs: delete this step once nginx maps .mjs -> text/javascript.
+      # Flutter fetches the engine renderer (CanvasKit / skwasm) from
+      # https://www.gstatic.com/flutter-canvaskit/<engineRevision>/ by
+      # default — a third-party request to Google on first load, before the
+      # user has touched anything. Setting the CANVASKIT_BASE_URL repository
+      # variable serves it from our own host instead.
+      #
+      # Unset, this step is skipped, the placeholder in
+      # web/flutter_bootstrap.js stays put, and the app falls back to
+      # Flutter's default. That fallback is in the bootstrap itself rather
+      # than here, so a plain local `flutter build web` behaves the same.
+      #
+      # Whatever URL you point at must serve the CanvasKit build for the
+      # engine revision logged below; a mismatch fails at runtime. Those
+      # files are in build/web/canvaskit/ after any web build.
+      - name: Point the engine renderer at our own host
+        if: inputs.action == 'sync' && vars.CANVASKIT_BASE_URL != ''
+        env:
+          CANVASKIT_BASE_URL: ${{ vars.CANVASKIT_BASE_URL }}
+        run: |
+          set -euo pipefail
+          cd build/web
+
+          if ! grep -q '__CANVASKIT_BASE_URL__' flutter_bootstrap.js; then
+            echo "::error::__CANVASKIT_BASE_URL__ placeholder is missing from flutter_bootstrap.js - has web/flutter_bootstrap.js been replaced by the generated one?" >&2
+            exit 1
+          fi
+
+          sed -i "s|__CANVASKIT_BASE_URL__|${CANVASKIT_BASE_URL}|" flutter_bootstrap.js
+          grep -q "${CANVASKIT_BASE_URL}" flutter_bootstrap.js
+
+          REV=$(grep -oE '"engineRevision":"[a-f0-9]+"' flutter_bootstrap.js | head -1 | cut -d'"' -f4)
+          echo "Renderer will load from ${CANVASKIT_BASE_URL}"
+          echo "That location must serve the CanvasKit build for engine revision ${REV}."
+
       - name: Rename .mjs so nginx serves it as JavaScript
         if: inputs.action == 'sync'
         run: |

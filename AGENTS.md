@@ -139,6 +139,20 @@ particular stored contents still seed them explicitly (see
   isolation is **not** required: without COOP/COEP the loader sets
   `skwasmSingleThreaded` and carries on, which is what makes this work on
   the plain SFTP static host we deploy to.
+- `web/flutter_bootstrap.js` is **ours**, not Flutter's generated one. It
+  keeps the `{{flutter_js}}`, `{{flutter_build_config}}` and
+  `{{flutter_service_worker_version}}` tokens the tool substitutes — drop
+  one and you silently lose that piece (the service worker, say). It adds
+  a `__CANVASKIT_BASE_URL__` placeholder so the deploy can serve the engine
+  renderer from our own host instead of Google's CDN when the
+  `CANVASKIT_BASE_URL` repository variable is set; unset, the placeholder
+  survives, the bootstrap's own guard sees it and falls back to the
+  default. A self-hosted URL must serve the CanvasKit build matching the
+  build's `engineRevision`, so it needs re-uploading on a Flutter upgrade.
+- The deploy also renames `main.dart.mjs` to `main.dart.mjs.js`, because
+  the host's nginx has no MIME mapping for `.mjs` and browsers refuse ES
+  modules served as `application/octet-stream` — a blank page. Delete that
+  step once the server maps `.mjs` → `text/javascript`.
 - A job that declares `secrets:` in a reusable-workflow call has **all**
   of its `outputs:` stripped by GitHub, even outputs that never touch a
   secret. `_web-deploy.yml`'s `compute`/`deploy` split exists solely so
