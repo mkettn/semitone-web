@@ -81,11 +81,23 @@ class SettingsScreen extends StatelessWidget {
     try {
       final imported = await importScale(io: fileIo);
       if (imported == null) return; // user cancelled the picker
-      settings.addScale(imported);
+
+      // Importing adds a copy rather than replacing anything, so a file
+      // whose name is already in the list would otherwise produce two
+      // identically labelled rows.
+      final named = imported.copyWith(
+        name: uniqueScaleName(
+          imported.name,
+          settings.scales.map((s) => s.name),
+        ),
+      );
+      settings.addScale(named);
       if (context.mounted) {
+        // Reports the name it was actually saved under, so a rename is
+        // visible rather than silent.
         _showMessage(
           context,
-          AppLocalizations.of(context)!.importedScaleMessage(imported.name),
+          AppLocalizations.of(context)!.importedScaleMessage(named.name),
         );
       }
     } on ScaleIoException catch (e) {

@@ -91,6 +91,28 @@ TuningScale parseScaleJson(Uint8List bytes) {
   }
 }
 
+/// A scale name that doesn't collide with any of [existing], by appending
+/// the lowest free ` (n)` counting from 2.
+///
+/// Importing never overwrites a saved scale — a re-imported file becomes a
+/// second copy, deliberately — so without this the list would show two rows
+/// with the same label and no way to tell them apart short of opening them.
+/// Importing the same file repeatedly gives "X", "X (2)", "X (3)"; a gap is
+/// filled rather than skipped past.
+///
+/// Only the label changes. Identity is the scale's id everywhere that
+/// matters, so this is cosmetic — nothing keys off the name.
+String uniqueScaleName(String desired, Iterable<String> existing) {
+  final taken = existing.toSet();
+  if (!taken.contains(desired)) return desired;
+
+  var n = 2;
+  while (taken.contains('$desired ($n)')) {
+    n++;
+  }
+  return '$desired ($n)';
+}
+
 /// Makes [name] safe to use as a filename, falling back to `scale` when
 /// nothing usable is left.
 String sanitizeFileName(String name) {

@@ -109,6 +109,34 @@ void main() {
       },
     );
 
+    group('naming an import that collides', () {
+      test('a free name is used as-is', () {
+        expect(uniqueScaleName('Chromatic', []), 'Chromatic');
+        expect(uniqueScaleName('Chromatic', ['Other']), 'Chromatic');
+      });
+
+      test('a taken name gets the lowest free suffix', () {
+        expect(uniqueScaleName('Chromatic', ['Chromatic']), 'Chromatic (2)');
+        expect(
+          uniqueScaleName('Chromatic', ['Chromatic', 'Chromatic (2)']),
+          'Chromatic (3)',
+        );
+      });
+
+      test('a gap is filled rather than skipped past', () {
+        expect(
+          uniqueScaleName('Chromatic', ['Chromatic', 'Chromatic (3)']),
+          'Chromatic (2)',
+        );
+      });
+
+      test('only exact matches count', () {
+        // Substrings and different casing are different scales.
+        expect(uniqueScaleName('Chrom', ['Chromatic']), 'Chrom');
+        expect(uniqueScaleName('chromatic', ['Chromatic']), 'chromatic');
+      });
+    });
+
     test('cancelling the picker is not an error', () async {
       final io = FakeScaleFileIo()..pickResult = null;
 
@@ -232,6 +260,58 @@ void main() {
       expect(settings.activeScaleId, imported.id);
     });
 
+    testWidgets('importing a name already in the list renames the copy', (
+      tester,
+    ) async {
+      final settings = await seededSettings();
+      final existing = settings.scales.first; // the bundled Chromatic
+      final before = settings.scales.length;
+
+      final io = FakeScaleFileIo()
+        ..willPickText(
+          '{"name":"Chromatic","degrees":[{"name":"C","cents":0}]}',
+        );
+
+      await pumpSettings(tester, settings, fileIo: io);
+      await tester.tap(find.byTooltip('Import a scale from file'));
+      await tester.pumpAndSettle();
+
+      expect(settings.scales, hasLength(before + 1));
+      final imported = settings.scales.last;
+      expect(imported.name, 'Chromatic (2)');
+      // The scale it collided with is untouched, name and contents both.
+      final kept = settings.scales.firstWhere((s) => s.id == existing.id);
+      expect(kept.name, 'Chromatic');
+      expect(degreeSignature(kept), degreeSignature(existing));
+      // The snackbar reports the name actually saved, not the one in the
+      // file — otherwise the rename would be invisible.
+      expect(find.text('Imported "Chromatic (2)".'), findsOneWidget);
+    });
+
+    testWidgets('importing the same file repeatedly keeps counting up', (
+      tester,
+    ) async {
+      final settings = await seededSettings();
+      final io = FakeScaleFileIo()
+        ..willPickText(
+          '{"name":"Chromatic","degrees":[{"name":"C","cents":0}]}',
+        );
+
+      await pumpSettings(tester, settings, fileIo: io);
+      for (var i = 0; i < 3; i++) {
+        await tester.tap(find.byTooltip('Import a scale from file'));
+        await tester.pumpAndSettle();
+      }
+
+      final names = settings.scales.map((s) => s.name).toList();
+      expect(
+        names,
+        containsAll(['Chromatic (2)', 'Chromatic (3)', 'Chromatic (4)']),
+      );
+      // Every scale still has a distinct id regardless of labelling.
+      expect(settings.scales.map((s) => s.id).toSet(), hasLength(names.length));
+    });
+
     testWidgets('cancelling the picker changes nothing', (tester) async {
       final settings = await seededSettings();
       final before = settings.scales.length;
@@ -312,14 +392,16 @@ void main() {
 
       final reimported = settings.scales.last;
       expect(reimported.id, isNot(original.id));
-      expect(reimported.name, original.name);
       expect(degreeSignature(reimported), degreeSignature(original));
       expect(reimported.rootIndex, original.rootIndex);
       expect(reimported.baseFrequency, original.baseFrequency);
-      // Both copies coexist: importing never overwrites its source.
+
+      // Both copies coexist — importing never overwrites its source — but
+      // the copy is renamed so the two rows are tellable apart.
+      expect(reimported.name, '${original.name} (2)');
       expect(
-        settings.scales.where((s) => s.name == original.name),
-        hasLength(2),
+        settings.scales.firstWhere((s) => s.id == original.id).name,
+        original.name,
       );
     });
   });
