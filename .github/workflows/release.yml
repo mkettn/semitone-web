@@ -7,11 +7,6 @@ on:
   push:
     tags:
       - "v*.*.*"
-    # TEMPORARY: testing the android build job directly on this branch,
-    # without needing a tag push. Remove this branches: entry once
-    # confirmed working — see PR discussion.
-    branches:
-      - claude/semitone-web-flutter-g03kvc
   workflow_dispatch:
 
 permissions:
