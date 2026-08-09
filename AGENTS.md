@@ -73,9 +73,40 @@ this boundary as a gap to close — it rules out `TunerScreen`,
 per-tone preview.
 
 What *is* expected to be tested is everything behind those buttons: the
-engines, the DSP, persistence, and the scale features (create, edit,
-duplicate, delete, import/export, reset). One test fixture per feature —
-see `docs/test-coverage-plan.md` for the layout and the reasoning.
+engines, the DSP, persistence, and the scale features.
+
+## Test layout
+
+**One fixture per feature**, so a failure names the broken feature before
+you read a single assertion, and there's an obvious place for the next
+test: `scale_new_test.dart`, `scale_edit_test.dart`,
+`scale_duplicate_test.dart`, `scale_delete_test.dart`,
+`scale_import_export_test.dart`, `settings_reset_test.dart`.
+`settings_screen_test.dart` keeps what isn't a feature of its own (page
+layout, language, keep-tick), and `pitch_to_note_test.dart` joins the DSP
+to note matching — the tuner's whole path bar the microphone.
+
+Shared setup lives in `test/support/` (`scale_harness.dart` for widget
+pumping and storage seeding, `pcm.dart` for synthesized audio input).
+Files there aren't named `*_test.dart`, so the runner treats them as
+libraries rather than suites with no tests in them. Put shared fakes there
+too rather than importing one test file from another.
+
+Widget tests mount **one screen in a bare `MaterialApp`**, not the whole
+app — `MaterialApp` only for the localization delegates and a real
+`Navigator`. `widget_test.dart` is the exception and stays small: it
+mounts the full app for the things that only exist there, like the
+metronome surviving a tab switch.
+
+`test/flutter_test_config.dart` applies per-test isolation to every suite:
+it clears the `SharedPreferences` mock store before each test and evicts
+the `rootBundle` asset cache after. **Don't rely on a test remembering to
+call `setMockInitialValues`** — the mock store is process-wide and outlives
+a test, so before that global `setUp` existed, a test that forgot inherited
+its predecessor's scales, `keepTick` and mic offset, and then passed or
+failed depending on the order tests happened to run in. Tests that need
+particular stored contents still seed them explicitly (see
+`settingsWithScales`); the global reset only guarantees the floor.
 
 ## Formatting and linting
 

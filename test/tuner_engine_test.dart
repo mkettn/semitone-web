@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:semitone_web/services/audio_capture.dart';
 import 'package:semitone_web/services/tuner_engine.dart';
 
-import 'pitch_pipeline_test.dart' show sinePcm;
+import 'support/pcm.dart';
 
 /// Stand-in for the `record` plugin: hands the engine whatever bytes the
 /// test pushes, and records how it was driven.
