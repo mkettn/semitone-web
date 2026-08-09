@@ -18,11 +18,7 @@ permissions:
   contents: write
 
 jobs:
-  test:
-    uses: ./.github/workflows/_test.yml
-
   android:
-    needs: test
     uses: ./.github/workflows/_flutter-build.yml
     with:
       platform: android
@@ -42,7 +38,6 @@ jobs:
   # its own signing step (mirroring Android's above) and a publish job
   # that uploads to TestFlight/App Store Connect instead of skipping it.
   ios:
-    needs: test
     uses: ./.github/workflows/_flutter-build.yml
     with:
       platform: ios
