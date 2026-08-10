@@ -53,11 +53,10 @@ jobs:
     uses: ./.github/workflows/_flutter-build.yml
     with:
       platform: android
-      artifact_name: app-release-apk
-      # The actual filename is computed at build time (version + short sha
-      # + arch — see _flutter-build.yml's "Rename Android release APK"
-      # step), so this is a glob rather than a fixed name.
-      artifact_path: build/app/outputs/flutter-apk/*.apk
+      artifact_name: app-release-artifacts
+      # The actual filenames are computed at build time (version + short sha
+      # — see _flutter-build.yml's gather step), so this is a glob rather than a fixed name.
+      artifact_path: build/app/outputs/release-artifacts/*
       build_name: ${{ needs.info.outputs.build_name }}
       build_number: ${{ needs.info.outputs.build_number }}
     secrets:
@@ -94,15 +93,17 @@ jobs:
     needs: [info, android, ios]
     runs-on: ubuntu-latest
     steps:
-      - name: Download Android APK
+      - name: Download Android Artifacts
         uses: actions/download-artifact@v8
         with:
-          name: app-release-apk
+          name: app-release-artifacts
           path: dist
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          files: dist/*.apk
+          files: |
+            dist/*.apk
+            dist/*.aab
           generate_release_notes: true
           prerelease: ${{ needs.info.outputs.is_prerelease }}
