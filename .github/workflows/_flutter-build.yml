@@ -107,6 +107,38 @@ jobs:
           mv build/app/outputs/flutter-apk/app-release.apk \
              "build/app/outputs/flutter-apk/semitone-web-${VERSION}-${SHORT_SHA}-arm64.apk"
 
+      # Google Play Store requires uploading an Android App Bundle (.aab).
+      - name: Build Android App Bundle (.aab)
+        if: inputs.platform == 'android'
+        env:
+          BUILD_NAME: ${{ inputs.build_name }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          ARGS=()
+          [ -n "$BUILD_NAME" ] && ARGS+=(--build-name="$BUILD_NAME")
+          [ -n "$BUILD_NUMBER" ] && ARGS+=(--build-number="$BUILD_NUMBER")
+          flutter build appbundle --release "${ARGS[@]}"
+
+      # Named after the tag/ref, short commit sha, e.g.
+      # semitone-web-v1.2.3-abc1234.aab, matching the APK naming convention.
+      - name: Rename Android release App Bundle
+        if: inputs.platform == 'android'
+        run: |
+          VERSION="dev"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            VERSION="$GITHUB_REF_NAME"
+          fi
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          mv build/app/outputs/bundle/release/app-release.aab \
+             "build/app/outputs/bundle/release/semitone-web-${VERSION}-${SHORT_SHA}.aab"
+
+      - name: Gather Android release artifacts
+        if: inputs.platform == 'android'
+        run: |
+          mkdir -p build/app/outputs/release-artifacts
+          cp build/app/outputs/flutter-apk/*.apk build/app/outputs/release-artifacts/
+          cp build/app/outputs/bundle/release/*.aab build/app/outputs/release-artifacts/
+
       # No Apple signing certificate or provisioning profile is configured
       # yet (that's needed for App Store distribution, added later), so
       # this only proves the iOS build compiles — the result can't be
