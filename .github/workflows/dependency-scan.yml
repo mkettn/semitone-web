@@ -38,7 +38,7 @@ jobs:
       # "v2" alias — using "@v2" fails outright ("unable to find version
       # v2"), it was never a valid ref. Bump this tag manually as needed.
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+        uses: google/osv-scanner-action/osv-scanner-action@v2.5.0
         with:
           scan-args: |-
             --lockfile=pubspec.lock
