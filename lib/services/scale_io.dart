@@ -57,10 +57,9 @@ class PlatformScaleFileIo implements ScaleFileIo {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
-      withData: true,
     );
     if (result == null || result.files.isEmpty) return null;
-    return PickedScaleFile(result.files.single.bytes);
+    return PickedScaleFile(await result.files.single.readAsBytes());
   }
 }
 

@@ -13,6 +13,17 @@ on:
       artifact_path:
         required: true
         type: string
+      # Override pubspec.yaml's version for this build — see release.yml's
+      # info job for how these are derived from the git tag. Optional so
+      # this workflow still works standalone with pubspec.yaml's version.
+      build_name:
+        required: false
+        type: string
+        default: ""
+      build_number:
+        required: false
+        type: string
+        default: ""
     secrets:
       # Android release signing (optional). Unset means the APK is signed
       # with the debug key instead — fine to sideload from a GitHub
@@ -55,7 +66,7 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.android_keystore_base64 }}
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
           cat > android/key.properties <<PROPS
           storeFile=release.keystore
           storePassword=${{ secrets.android_keystore_password }}
@@ -70,7 +81,14 @@ jobs:
       # to justify shipping the extra ABIs' native code weight.
       - name: Build Android APK (arm64)
         if: inputs.platform == 'android'
-        run: flutter build apk --release --target-platform android-arm64
+        env:
+          BUILD_NAME: ${{ inputs.build_name }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          ARGS=()
+          [ -n "$BUILD_NAME" ] && ARGS+=(--build-name="$BUILD_NAME")
+          [ -n "$BUILD_NUMBER" ] && ARGS+=(--build-number="$BUILD_NUMBER")
+          flutter build apk --release --target-platform android-arm64 "${ARGS[@]}"
 
       # Named after the tag/ref, short commit sha, and arch, e.g.
       # semitone-web-v1.2.3-abc1234-arm64.apk, so the file is
@@ -95,7 +113,14 @@ jobs:
       # installed on a device or uploaded anywhere.
       - name: Build iOS (unsigned)
         if: inputs.platform == 'ios'
-        run: flutter build ios --release --no-codesign
+        env:
+          BUILD_NAME: ${{ inputs.build_name }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          ARGS=()
+          [ -n "$BUILD_NAME" ] && ARGS+=(--build-name="$BUILD_NAME")
+          [ -n "$BUILD_NUMBER" ] && ARGS+=(--build-number="$BUILD_NUMBER")
+          flutter build ios --release --no-codesign "${ARGS[@]}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
