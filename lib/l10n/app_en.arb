@@ -40,7 +40,7 @@
   "languageSectionHeader": "Language",
   "languageSystemDefault": "System default",
   "aboutSectionHeader": "About",
-  "appDescription": "A Flutter tuner & metronome, in the spirit of the original Semitone app.",
+  "appDescription": "A tuner and metronome that help you sing and hit the right notes, in any scale.",
   "resetSettingsButton": "Reset settings to defaults",
   "cantDeleteLastScale": "Can't delete the last scale.",
   "deletedScaleMessage": "Deleted \"{name}\".",

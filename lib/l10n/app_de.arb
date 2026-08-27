@@ -35,7 +35,7 @@
   "languageSectionHeader": "Sprache",
   "languageSystemDefault": "Systemstandard",
   "aboutSectionHeader": "Über",
-  "appDescription": "Ein Flutter-Stimmgerät & Metronom im Geiste der ursprünglichen Semitone-App.",
+  "appDescription": "Ein Stimmgerät und Metronom, mit dem Sie sauber singen und die richtigen Töne treffen – in jeder Tonleiter.",
   "resetSettingsButton": "Einstellungen auf Standard zurücksetzen",
   "cantDeleteLastScale": "Die letzte Tonleiter kann nicht gelöscht werden.",
   "deletedScaleMessage": "Tonleiter \"{name}\" gelöscht.",
