@@ -1,11 +1,11 @@
 {
-    "name": "semitone_web",
-    "short_name": "semitone_web",
+    "name": "Semitone Web",
+    "short_name": "Semitone Web",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "A tuner and metronome that help you sing and hit the right notes, in any scale.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
