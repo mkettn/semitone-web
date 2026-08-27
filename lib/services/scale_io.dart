@@ -54,12 +54,12 @@ class PlatformScaleFileIo implements ScaleFileIo {
 
   @override
   Future<PickedScaleFile?> pickJson() async {
-    final result = await FilePicker.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['json'],
     );
-    if (result == null || result.files.isEmpty) return null;
-    return PickedScaleFile(await result.files.single.readAsBytes());
+    if (file == null) return null;
+    return PickedScaleFile(await file.readAsBytes());
   }
 }
 
