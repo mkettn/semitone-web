@@ -1,39 +1,37 @@
 version: 2
 updates:
   # Dart/Flutter packages from pubspec.yaml.
+  #
+  # open-pull-requests-limit: 0 turns off routine version updates — we don't
+  # want a PR every time a dependency ships a new minor. Security updates are
+  # enabled separately (repo Settings -> Code security) and are NOT capped by
+  # this limit, so vulnerability fixes still open PRs. The ecosystem entry has
+  # to stay here for the security-updates grouping below to apply.
   - package-ecosystem: "pub"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 0
     groups:
-      # All security-fix updates land in a single weekly PR instead of one
-      # PR per vulnerable package.
+      # All security-fix updates land in a single PR instead of one PR per
+      # vulnerable package.
       security-updates:
         applies-to: "security-updates"
-        patterns:
-          - "*"
-      # Same grouping for routine (non-security) version bumps, so both
-      # kinds of updates stay batched rather than flooding the PR list.
-      dart-dependencies:
-        applies-to: "version-updates"
         patterns:
           - "*"
     commit-message:
       prefix: "deps"
 
   # Actions used by the workflows in .github/workflows/.
+  # Same posture as above: security updates only.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 0
     groups:
       security-updates:
         applies-to: "security-updates"
-        patterns:
-          - "*"
-      github-actions:
-        applies-to: "version-updates"
         patterns:
           - "*"
     commit-message:
